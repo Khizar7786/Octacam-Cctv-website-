@@ -1,6 +1,6 @@
 # OctaCam
 
-OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications and the initial Django backend foundation. Storefront, catalog, checkout, survey booking, and authentication endpoints have not been built yet.
+OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication API, and brand/category APIs. Storefront, products, checkout, survey booking, and password recovery have not been built yet.
 
 ## Run the backend locally
 
@@ -49,4 +49,16 @@ The test suite uses PostgreSQL and needs permission to create a temporary test d
 
 `manage.py` uses `config.settings.local`; WSGI and ASGI default to `config.settings.production`. Production refuses to start without `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` (comma-separated), and a PostgreSQL `DATABASE_URL`. Production sets secure cookies, HTTPS redirect, and HSTS; configure HTTPS at the reverse proxy before using it. The test settings retain PostgreSQL rather than swapping in SQLite.
 
-The backend has no customer or staff authentication endpoints yet. DRF's default permission is authenticated-only and no authentication mechanism is enabled until that slice is implemented. Do not deploy this foundation to take real orders.
+## Authentication API
+
+The API exposes `POST /api/v1/auth/register/`, `login/`, `refresh/`, and `logout/`; `GET /api/v1/auth/csrf/`; `GET /api/v1/account/profile/` for customers; and `GET /api/v1/staff/profile/` for staff. Password recovery remains for a later slice. Public registration always creates a customer account. Staff accounts must be created or granted `is_staff` through a trusted administrative process, never through registration input.
+
+Start by requesting `GET /api/v1/auth/csrf/`. It returns `csrfToken` and sets a CSRF cookie. Send that token in `X-CSRFToken` on all four auth POST endpoints. Registration accepts `email`, `full_name`, optional `phone`, and `password`; login accepts `email` and `password`. Both return a short-lived `access` token and user details, and set a seven-day refresh token in an HttpOnly, SameSite=Lax cookie scoped to `/api/v1/auth/` (Secure in production). Keep the access token in application memory and send it as `Authorization: Bearer <token>` to profile endpoints. A page reload can call `refresh/` with the cookie and CSRF header to obtain a new access token and rotated cookie. Coordinate simultaneous refresh attempts into one request; a used refresh token cannot be used again. Logout revokes the refresh cookie and the client discards its access token. An already issued access token remains valid until its five-minute expiry unless the account is disabled or its password changes.
+
+Login, registration, and refresh have in-process rate limits. Production needs an edge-level rate limit as well when multiple Django processes run. Run `python manage.py flushexpiredtokens` on a schedule to remove expired token records. Do not deploy this foundation to take real orders.
+
+## Brand and category APIs
+
+Visitors can list active brands/categories and retrieve them by slug. Staff can list all entries, create them, and edit or deactivate them by ID using a Bearer access token. Lists return 20 entries per page. See [the endpoint and Swagger walkthrough](Docs/catalog-api.md) for request examples and expected permission responses. Apply the catalog migration with `python manage.py migrate` before trying these routes.
+
+Staff can also create and edit unpublished product drafts, including taxonomy, identifiers, descriptions, warranty text, and regular/optional sale prices. Stock, images, and publication are reserved for later workflows. See [the product draft API walkthrough](Docs/product-draft-api.md).

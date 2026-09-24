@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -43,7 +44,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
+    "rest_framework_simplejwt.token_blacklist",
     "apps.accounts",
+    "apps.audit",
+    "apps.catalog",
 ]
 
 MIDDLEWARE = [
@@ -55,6 +59,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+CSRF_FAILURE_VIEW = "apps.core.api.exception_handler.csrf_failure"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -77,9 +82,27 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "apps.core.api.exception_handler.api_exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    "NUM_PROXIES": 0,
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_register": "5/hour",
+        "auth_login": "10/min",
+        "auth_refresh": "30/min",
+    },
 }
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "CHECK_REVOKE_TOKEN": True,
+}
+AUTH_REFRESH_COOKIE_NAME = "octacam_refresh"
+AUTH_REFRESH_COOKIE_PATH = "/api/v1/auth/"
 SPECTACULAR_SETTINGS = {
     "TITLE": "OctaCam API",
     "VERSION": "1.0.0",
@@ -92,3 +115,4 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+CATALOG_PAGE_SIZE = 20

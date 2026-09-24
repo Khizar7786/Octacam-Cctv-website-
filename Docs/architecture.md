@@ -579,6 +579,8 @@ GET /api/v1/auth/csrf/
 
 and include it on cookie-authenticated state-changing requests.
 
+The backend also requires this CSRF header on registration and login because those endpoints set the refresh cookie.
+
 ---
 
 ## 11.8 Password reset
@@ -996,6 +998,8 @@ updated_at
 
 The launch architecture assumes a flat category taxonomy.
 
+Category names and slugs are unique, as for brands. Both taxonomy APIs require an explicit slug when creating an entry; editing its name does not change its slug. Names and slugs allow up to 120 characters. Staff may explicitly edit a slug, which changes the public API URL. Deactivation uses `PATCH` with `is_active: false`; public lists omit the entry and public detail requests return 404. Staff lists retain inactive entries. No hard-delete endpoint is exposed.
+
 Do not introduce recursive parent/child categories until a real catalog requirement needs them.
 
 ---
@@ -1056,6 +1060,10 @@ otherwise regular_price
 ```
 
 Do not duplicate selling price into another mutable database column.
+
+Draft product writes use staff-only `POST` and `PATCH` endpoints. SKU values are trimmed and normalized to uppercase, slugs are normalized to lowercase, and both are case-insensitively unique. Prices use `numeric(12, 2)`, supporting PKR values through `9,999,999,999.99`. Draft creation always sets `is_published` to false and `stock_quantity` to zero; the draft API rejects attempts to change either field. Images, publication commands, and inventory adjustments remain separate later slices.
+
+Changing `regular_price` or `sale_price` creates one `PRODUCT_PRICE_CHANGED` audit event in the same transaction. The event stores the staff actor, product ID, timestamp, and before/after prices as decimal strings. Creating a draft does not count as a price change, and edits that leave both price fields unchanged do not create an event.
 
 ---
 
@@ -2117,6 +2125,8 @@ GET   /api/v1/account/orders/
 GET   /api/v1/account/orders/{public_id}/
 ```
 
+The profile GET returns the signed-in customer only. Staff use `GET /api/v1/staff/profile/` to retrieve their own staff identity; both routes enforce role permissions in Django.
+
 A customer may retrieve only orders where:
 
 ```text
@@ -2378,6 +2388,12 @@ Internal notes are never returned from public tracking endpoints.
 
 # 56. Staff operations API
 
+Staff identity:
+
+```text
+GET /api/v1/staff/profile/
+```
+
 Dashboard summary:
 
 ```text
@@ -2518,6 +2534,8 @@ Initial examples:
 - staff email outbox list.
 
 Use a consistent page-size strategy.
+
+Brand and category lists use page-number pagination with a centrally configured page size of 20 (`CATALOG_PAGE_SIZE`), ordered by `sort_order`, then `name`, then `id`. Responses contain `count`, `next`, `previous`, and `results`.
 
 Do not return unbounded database tables.
 
