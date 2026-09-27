@@ -42,7 +42,7 @@ def set_refresh_cookie(response, token):
         samesite="Lax",
     )
 
-
+# Used to remove the refresh token when the user logs out.
 def clear_refresh_cookie(response):
     response.delete_cookie(settings.AUTH_REFRESH_COOKIE_NAME, path=settings.AUTH_REFRESH_COOKIE_PATH, samesite="Lax")
 
@@ -68,6 +68,7 @@ class CsrfView(APIView):
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
+    # Rate limit registration attempts.
     throttle_scope = "auth_register"
 
     @extend_schema(
@@ -100,6 +101,7 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        # Django checks the supplied email and password.
         user = authenticate(
             request=request,
             username=serializer.validated_data["email"],

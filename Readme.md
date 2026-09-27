@@ -1,6 +1,6 @@
 # OctaCam
 
-OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication API, and brand/category APIs. Storefront, products, checkout, survey booking, and password recovery have not been built yet.
+OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication API, catalog taxonomy, typed product specifications, staff publication controls, and public product APIs. The storefront UI, checkout, inventory adjustments, product images, survey booking, and password recovery have not been built yet.
 
 ## Run the backend locally
 
@@ -57,8 +57,8 @@ Start by requesting `GET /api/v1/auth/csrf/`. It returns `csrfToken` and sets a 
 
 Login, registration, and refresh have in-process rate limits. Production needs an edge-level rate limit as well when multiple Django processes run. Run `python manage.py flushexpiredtokens` on a schedule to remove expired token records. Do not deploy this foundation to take real orders.
 
-## Brand and category APIs
+## Catalog APIs
 
 Visitors can list active brands/categories and retrieve them by slug. Staff can list all entries, create them, and edit or deactivate them by ID using a Bearer access token. Lists return 20 entries per page. See [the endpoint and Swagger walkthrough](Docs/catalog-api.md) for request examples and expected permission responses. Apply the catalog migration with `python manage.py migrate` before trying these routes.
 
-Staff can also create and edit unpublished product drafts, including taxonomy, identifiers, descriptions, warranty text, and regular/optional sale prices. Stock, images, and publication are reserved for later workflows. See [the product draft API walkthrough](Docs/product-draft-api.md).
+Staff can create product drafts, configure typed specifications per category, assign specification values, and publish complete products. Visitors can list and retrieve published products; published products remain visible at zero stock. Stock adjustments, images, search, and filtering remain later workflows. See [the product catalog API walkthrough](Docs/product-draft-api.md).

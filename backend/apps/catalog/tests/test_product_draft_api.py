@@ -184,7 +184,7 @@ class ProductDraftApiTests(TestCase):
         self.assertEqual(event.before_data, {"regular_price": "100.00", "sale_price": None})
         self.assertEqual(event.after_data, {"regular_price": "120.00", "sale_price": "110.00"})
 
-    def test_publication_and_stock_fields_are_rejected_and_no_delete_route_exists(self):
+    def test_creation_publication_and_stock_rules_and_no_delete_route(self):
         product = self.create_product()
         self.authorize(self.staff)
         collection = "/api/v1/staff/catalog/products/"
@@ -194,13 +194,17 @@ class ProductDraftApiTests(TestCase):
         self.assertEqual(creation.status_code, 400)
         self.assertIn("is_published", creation.data["error"]["fields"])
         self.assertIn("stock_quantity", creation.data["error"]["fields"])
-        update = self.client.patch(
-            f"{collection}{product.id}/", {"is_published": True, "stock_quantity": 10}, format="json",
+        stock_update = self.client.patch(
+            f"{collection}{product.id}/", {"stock_quantity": 10}, format="json",
         )
-        self.assertEqual(update.status_code, 400)
+        self.assertEqual(stock_update.status_code, 400)
+        publication = self.client.patch(
+            f"{collection}{product.id}/", {"is_published": True}, format="json",
+        )
+        self.assertEqual(publication.status_code, 200)
         self.assertEqual(self.client.delete(f"{collection}{product.id}/").status_code, 405)
         product.refresh_from_db()
-        self.assertFalse(product.is_published)
+        self.assertTrue(product.is_published)
         self.assertEqual(product.stock_quantity, 0)
 
     def test_database_constraints_reject_invalid_prices_outside_api(self):

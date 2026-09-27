@@ -60,6 +60,10 @@ class Product(models.Model):
             models.UniqueConstraint(Lower("sku"), name="product_sku_ci_unique"),
             models.UniqueConstraint(Lower("slug"), name="product_slug_ci_unique"),
         ]
+        indexes = [
+            models.Index(fields=["is_published", "category"]),
+            models.Index(fields=["is_published", "brand"]),
+        ]
 
     @property
     def selling_price(self):
@@ -67,3 +71,120 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.sku})"
+
+
+class SpecificationDefinition(models.Model):
+    class DataType(models.TextChoices):
+        TEXT = "text", "Text"
+        INTEGER = "integer", "Integer"
+        DECIMAL = "decimal", "Decimal"
+        BOOLEAN = "boolean", "Boolean"
+        CHOICE = "choice", "Choice"
+
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="specification_definitions")
+    key = models.SlugField(max_length=120)
+    label = models.CharField(max_length=120)
+    data_type = models.CharField(max_length=10, choices=DataType.choices)
+    unit = models.CharField(max_length=40, blank=True)
+    is_required = models.BooleanField(default=False)
+    is_filterable = models.BooleanField(default=False)
+    is_displayed = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "label", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["category", "key"], name="spec_definition_category_key_unique"),
+        ]
+
+    def __str__(self):
+        return f"{self.category}: {self.label}"
+
+
+class SpecificationChoice(models.Model):
+    definition = models.ForeignKey(SpecificationDefinition, on_delete=models.PROTECT, related_name="choices")
+    value = models.SlugField(max_length=120)
+    label = models.CharField(max_length=120)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "label", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["definition", "value"], name="spec_choice_definition_value_unique"),
+        ]
+
+    def __str__(self):
+        return f"{self.definition}: {self.label}"
+
+
+class ProductSpecificationValue(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="specification_values")
+    definition = models.ForeignKey(
+        SpecificationDefinition,
+        on_delete=models.PROTECT,
+        related_name="product_values",
+    )
+    text_value = models.TextField(null=True, blank=True)
+    integer_value = models.BigIntegerField(null=True, blank=True)
+    decimal_value = models.DecimalField(max_digits=18, decimal_places=4, null=True, blank=True)
+    boolean_value = models.BooleanField(null=True, blank=True)
+    choice = models.ForeignKey(
+        SpecificationChoice,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="product_values",
+    )
+
+    class Meta:
+        ordering = ["definition__sort_order", "definition__label", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["product", "definition"], name="product_spec_value_unique"),
+            models.CheckConstraint(
+                condition=(
+                    (
+                        models.Q(text_value__isnull=False)
+                        & models.Q(integer_value__isnull=True)
+                        & models.Q(decimal_value__isnull=True)
+                        & models.Q(boolean_value__isnull=True)
+                        & models.Q(choice__isnull=True)
+                    )
+                    | (
+                        models.Q(text_value__isnull=True)
+                        & models.Q(integer_value__isnull=False)
+                        & models.Q(decimal_value__isnull=True)
+                        & models.Q(boolean_value__isnull=True)
+                        & models.Q(choice__isnull=True)
+                    )
+                    | (
+                        models.Q(text_value__isnull=True)
+                        & models.Q(integer_value__isnull=True)
+                        & models.Q(decimal_value__isnull=False)
+                        & models.Q(boolean_value__isnull=True)
+                        & models.Q(choice__isnull=True)
+                    )
+                    | (
+                        models.Q(text_value__isnull=True)
+                        & models.Q(integer_value__isnull=True)
+                        & models.Q(decimal_value__isnull=True)
+                        & models.Q(boolean_value__isnull=False)
+                        & models.Q(choice__isnull=True)
+                    )
+                    | (
+                        models.Q(text_value__isnull=True)
+                        & models.Q(integer_value__isnull=True)
+                        & models.Q(decimal_value__isnull=True)
+                        & models.Q(boolean_value__isnull=True)
+                        & models.Q(choice__isnull=False)
+                    )
+                ),
+                name="product_spec_exactly_one_value",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.product}: {self.definition.key}"

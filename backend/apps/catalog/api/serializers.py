@@ -1,7 +1,14 @@
 from rest_framework import serializers
 
-from apps.catalog.models import Brand, Category, Product
-from apps.catalog.services import create_product_draft, save_taxonomy, update_product_draft, validate_product_prices
+from apps.catalog.models import Brand, Category, Product, SpecificationChoice, SpecificationDefinition
+from apps.catalog.services import (
+    create_product_draft,
+    save_specification_choice,
+    save_specification_definition,
+    save_taxonomy,
+    update_product,
+    validate_product_prices,
+)
 
 
 class TaxonomySerializer(serializers.ModelSerializer):
@@ -26,17 +33,137 @@ class CategorySerializer(TaxonomySerializer):
         model = Category
 
 
-class ProductDraftSerializer(serializers.ModelSerializer):
+class SpecificationChoiceSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpecificationChoice
+        fields = ("id", "value", "label", "is_active", "sort_order")
+
+
+class SpecificationDefinitionSerializer(serializers.ModelSerializer):
+    choices = SpecificationChoiceSummarySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = SpecificationDefinition
+        fields = (
+            "id", "category", "key", "label", "data_type", "unit", "is_required", "is_filterable",
+            "is_displayed", "is_active", "sort_order", "choices", "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "category", "created_at", "updated_at")
+
+    def validate_key(self, value):
+        value = value.strip().lower()
+        category = self.instance.category if self.instance else self.context["category"]
+        queryset = SpecificationDefinition.objects.filter(category=category, key=value)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("This category already has a specification with this key.")
+        return value
+
+    def create(self, validated_data):
+        return save_specification_definition(
+            instance=SpecificationDefinition(),
+            category=self.context["category"],
+            data=validated_data,
+        )
+
+    def update(self, instance, validated_data):
+        return save_specification_definition(instance=instance, category=instance.category, data=validated_data)
+
+
+class SpecificationChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpecificationChoice
+        fields = ("id", "definition", "value", "label", "is_active", "sort_order")
+        read_only_fields = ("id", "definition")
+
+    def validate_value(self, value):
+        value = value.strip().lower()
+        definition = self.instance.definition if self.instance else self.context["definition"]
+        queryset = SpecificationChoice.objects.filter(definition=definition, value=value)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("This specification already has a choice with this value.")
+        return value
+
+    def create(self, validated_data):
+        return save_specification_choice(
+            instance=SpecificationChoice(),
+            definition=self.context["definition"],
+            data=validated_data,
+        )
+
+    def update(self, instance, validated_data):
+        return save_specification_choice(instance=instance, definition=instance.definition, data=validated_data)
+
+
+def specification_value_data(value):
+    definition = value.definition
+    if definition.data_type == SpecificationDefinition.DataType.TEXT:
+        raw_value = value.text_value
+        display_value = raw_value
+    elif definition.data_type == SpecificationDefinition.DataType.INTEGER:
+        raw_value = value.integer_value
+        display_value = str(raw_value)
+    elif definition.data_type == SpecificationDefinition.DataType.DECIMAL:
+        raw_value = format(value.decimal_value, "f")
+        display_value = raw_value
+    elif definition.data_type == SpecificationDefinition.DataType.BOOLEAN:
+        raw_value = value.boolean_value
+        display_value = "Yes" if raw_value else "No"
+    else:
+        raw_value = value.choice.value
+        display_value = value.choice.label
+    if definition.unit and definition.data_type != SpecificationDefinition.DataType.BOOLEAN:
+        display_value = f"{display_value} {definition.unit}"
+    return {
+        "definition": definition.id,
+        "key": definition.key,
+        "label": definition.label,
+        "data_type": definition.data_type,
+        "unit": definition.unit,
+        "value": raw_value,
+        "display_value": display_value,
+    }
+
+
+class ProductSpecificationsField(serializers.ListField):
+    child = serializers.JSONField()
+
+    def get_attribute(self, instance):
+        return instance
+
+    def to_representation(self, product):
+        return [specification_value_data(value) for value in product.specification_values.all()]
+
+    def to_internal_value(self, data):
+        entries = super().to_internal_value(data)
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise serializers.ValidationError("Each specification must be an object.")
+            unknown = set(entry) - {"definition", "value"}
+            if unknown:
+                raise serializers.ValidationError(
+                    f"Unknown specification fields: {', '.join(sorted(unknown))}."
+                )
+            if "definition" not in entry or "value" not in entry:
+                raise serializers.ValidationError("Each specification requires definition and value.")
+        return entries
+
+
+class ProductStaffSerializer(serializers.ModelSerializer):
     selling_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    specifications = ProductSpecificationsField(required=False)
 
     class Meta:
         model = Product
         fields = (
             "id", "brand", "category", "sku", "slug", "name", "short_description", "full_description",
             "regular_price", "sale_price", "selling_price", "warranty_text", "stock_quantity", "is_published",
-            "created_at", "updated_at",
+            "specifications", "created_at", "updated_at",
         )
-        read_only_fields = ("id", "selling_price", "stock_quantity", "is_published", "created_at", "updated_at")
+        read_only_fields = ("id", "selling_price", "stock_quantity", "created_at", "updated_at")
 
     def validate_sku(self, value):
         value = value.strip().upper()
@@ -58,9 +185,10 @@ class ProductDraftSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         forbidden = {}
-        for field in ("stock_quantity", "is_published"):
-            if field in self.initial_data:
-                forbidden[field] = ["This field cannot be changed through the product draft API."]
+        if "stock_quantity" in self.initial_data:
+            forbidden["stock_quantity"] = ["Stock must be changed through the inventory workflow."]
+        if self.instance is None and "is_published" in self.initial_data:
+            forbidden["is_published"] = ["Create the draft first, then publish it with PATCH after validation."]
         if forbidden:
             raise serializers.ValidationError(forbidden)
 
@@ -73,8 +201,40 @@ class ProductDraftSerializer(serializers.ModelSerializer):
         return create_product_draft(data=validated_data)
 
     def update(self, instance, validated_data):
-        return update_product_draft(
+        return update_product(
             product=instance,
             data=validated_data,
             actor=self.context["request"].user,
+        )
+
+
+class TaxonomySummarySerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    slug = serializers.SlugField(read_only=True)
+
+
+class PublicProductListSerializer(serializers.ModelSerializer):
+    brand = TaxonomySummarySerializer(read_only=True)
+    category = TaxonomySummarySerializer(read_only=True)
+    selling_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    is_in_stock = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = (
+            "id", "brand", "category", "sku", "slug", "name", "short_description", "regular_price",
+            "sale_price", "selling_price", "stock_quantity", "is_in_stock",
+        )
+
+    def get_is_in_stock(self, obj) -> bool:
+        return obj.stock_quantity > 0
+
+
+class PublicProductDetailSerializer(PublicProductListSerializer):
+    specifications = ProductSpecificationsField(read_only=True)
+
+    class Meta(PublicProductListSerializer.Meta):
+        fields = PublicProductListSerializer.Meta.fields + (
+            "full_description", "warranty_text", "specifications", "updated_at",
         )
