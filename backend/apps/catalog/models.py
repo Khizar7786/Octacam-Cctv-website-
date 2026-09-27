@@ -69,8 +69,29 @@ class Product(models.Model):
     def selling_price(self):
         return self.sale_price if self.sale_price is not None else self.regular_price
 
+    @property
+    def primary_image(self):
+        return next(iter(self.images.all()), None)
+
     def __str__(self):
         return f"{self.name} ({self.sku})"
+
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="products/", max_length=255)
+    alt_text = models.CharField(max_length=255)
+    sort_order = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        constraints = [models.UniqueConstraint(fields=["product", "sort_order"], name="product_image_order_unique")]
+
+    def __str__(self):
+        return f"{self.product.sku} image {self.sort_order}"
 
 
 class SpecificationDefinition(models.Model):

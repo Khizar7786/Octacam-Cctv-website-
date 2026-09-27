@@ -107,6 +107,7 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "OctaCam API",
     "VERSION": "1.0.0",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 LANGUAGE_CODE = "en-us"
@@ -114,5 +115,11 @@ TIME_ZONE = "Asia/Karachi"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+PRODUCT_IMAGE_MAX_WIDTH = 6000
+PRODUCT_IMAGE_MAX_HEIGHT = 6000
+PRODUCT_IMAGE_MAX_PIXELS = 24_000_000
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CATALOG_PAGE_SIZE = 20

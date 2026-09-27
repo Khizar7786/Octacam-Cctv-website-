@@ -1,6 +1,6 @@
 # OctaCam
 
-OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication API, catalog taxonomy, typed product specifications, staff publication controls, and public product APIs. The storefront UI, checkout, inventory adjustments, product images, survey booking, and password recovery have not been built yet.
+OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication API, catalog taxonomy, typed product specifications, staff product image management, publication controls, and public product APIs. The storefront UI, checkout, inventory adjustments, survey booking, and password recovery have not been built yet.
 
 ## Run the backend locally
 
@@ -47,7 +47,7 @@ The test suite uses PostgreSQL and needs permission to create a temporary test d
 
 ## Configuration
 
-`manage.py` uses `config.settings.local`; WSGI and ASGI default to `config.settings.production`. Production refuses to start without `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` (comma-separated), and a PostgreSQL `DATABASE_URL`. Production sets secure cookies, HTTPS redirect, and HSTS; configure HTTPS at the reverse proxy before using it. The test settings retain PostgreSQL rather than swapping in SQLite.
+`manage.py` uses `config.settings.local`; WSGI and ASGI default to `config.settings.production`. Production refuses to start without `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` (comma-separated), a PostgreSQL `DATABASE_URL`, and `DJANGO_MEDIA_STORAGE_BACKEND` pointing to a configured object-storage backend. No production media provider has been selected yet. Production sets secure cookies, HTTPS redirect, and HSTS; configure HTTPS at the reverse proxy before using it. The test settings retain PostgreSQL rather than swapping in SQLite.
 
 ## Authentication API
 
@@ -61,4 +61,4 @@ Login, registration, and refresh have in-process rate limits. Production needs a
 
 Visitors can list active brands/categories and retrieve them by slug. Staff can list all entries, create them, and edit or deactivate them by ID using a Bearer access token. Lists return 20 entries per page. See [the endpoint and Swagger walkthrough](Docs/catalog-api.md) for request examples and expected permission responses. Apply the catalog migration with `python manage.py migrate` before trying these routes.
 
-Staff can create product drafts, configure typed specifications per category, assign specification values, and publish complete products. Visitors can list and retrieve published products; published products remain visible at zero stock. Stock adjustments, images, search, and filtering remain later workflows. See [the product catalog API walkthrough](Docs/product-draft-api.md).
+Staff can create product drafts, configure typed specifications per category, assign specification values, upload and order images, and publish products. Visitors can search, filter, sort, list, and retrieve published products with image metadata; published products remain visible at zero stock. Filter metadata is available at `/api/v1/catalog/filters/`. Local media files are stored in ignored `backend/media/` and served at `/media/` by Django only in development. Stock adjustments remain a later workflow. See [the product catalog API walkthrough](Docs/product-draft-api.md).

@@ -1,17 +1,24 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import generics
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError
 
 from apps.accounts.api.serializers import ApiErrorSerializer
-from apps.catalog.models import SpecificationDefinition
+from apps.catalog.image_services import create_product_image, delete_product_image, update_product_image
+from apps.catalog.models import ProductImage, SpecificationDefinition
 from apps.catalog.selectors import (
     get_brands,
     get_categories,
     get_public_product_details,
     get_public_products,
+    public_filter_metadata,
+    public_product_query,
     get_specification_choices,
     get_specification_definitions,
     get_staff_products,
@@ -21,12 +28,16 @@ from apps.core.permissions import IsStaff
 from .serializers import (
     BrandSerializer,
     CategorySerializer,
+    ProductImageSerializer,
+    ProductImageWriteSerializer,
+    PublicFilterMetadataSerializer,
     ProductStaffSerializer,
     PublicProductDetailSerializer,
     PublicProductListSerializer,
     SpecificationChoiceSerializer,
     SpecificationDefinitionSerializer,
 )
+from .filters import parse_discovery_query
 
 
 class CatalogPagination(PageNumberPagination):
@@ -75,6 +86,23 @@ class PublicCategoryDetail(PublicTaxonomyDetail):
         return get_categories()
 
 
+PRODUCT_QUERY_PARAMETERS = [
+    OpenApiParameter("q", str, description="Case-insensitive name or full/partial model/SKU search."),
+    OpenApiParameter("brand", str, description="Active brand slug."),
+    OpenApiParameter("category", str, description="Active category slug; required for spec_* filters."),
+    OpenApiParameter("min_price", str, description="Minimum selling price in PKR."),
+    OpenApiParameter("max_price", str, description="Maximum selling price in PKR."),
+    OpenApiParameter("availability", str, enum=["in_stock", "out_of_stock"]),
+    OpenApiParameter("sort", str, enum=["relevance", "price_asc", "price_desc"]),
+    OpenApiParameter("spec_<key>", str, description="Active choice value or true/false for a category specification."),
+    OpenApiParameter("spec_<key>_min", str, description="Minimum numeric specification value."),
+    OpenApiParameter("spec_<key>_max", str, description="Maximum numeric specification value."),
+]
+
+
+@extend_schema_view(get=extend_schema(parameters=PRODUCT_QUERY_PARAMETERS, responses={
+    200: PublicProductListSerializer(many=True), 400: ApiErrorSerializer,
+}))
 class PublicProductList(generics.ListAPIView):
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -82,7 +110,21 @@ class PublicProductList(generics.ListAPIView):
     pagination_class = CatalogPagination
 
     def get_queryset(self):
-        return get_public_products()
+        filters, specification_filters = parse_discovery_query(self.request.query_params)
+        return public_product_query(filters, specification_filters)
+
+
+@extend_schema_view(get=extend_schema(
+    parameters=[OpenApiParameter("brand", str), OpenApiParameter("category", str)],
+    responses={200: PublicFilterMetadataSerializer, 400: ApiErrorSerializer},
+))
+class PublicFilterMetadata(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        filters, _ = parse_discovery_query(request.query_params, metadata=True)
+        return Response(public_filter_metadata(filters))
 
 
 @extend_schema_view(get=extend_schema(responses={200: PublicProductDetailSerializer, 404: ApiErrorSerializer}))
@@ -266,3 +308,50 @@ class StaffProductDetail(generics.RetrieveUpdateAPIView):
 
     def get_queryset(self):
         return get_staff_products()
+
+
+class StaffProductImageCreate(APIView):
+    permission_classes = [IsStaff]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(
+        request=ProductImageWriteSerializer,
+        responses={201: ProductImageSerializer, 400: ApiErrorSerializer,
+                   401: ApiErrorSerializer, 403: ApiErrorSerializer, 404: ApiErrorSerializer},
+    )
+    def post(self, request, product_pk):
+        product = get_object_or_404(get_staff_products(), pk=product_pk)
+        serializer = ProductImageWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        image = create_product_image(
+            product=product,
+            upload=serializer.validated_data["image"],
+            alt_text=serializer.validated_data["alt_text"],
+            sort_order=serializer.validated_data.get("sort_order"),
+        )
+        return Response(ProductImageSerializer(image).data, status=status.HTTP_201_CREATED)
+
+
+class StaffProductImageDetail(APIView):
+    permission_classes = [IsStaff]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    @extend_schema(
+        request=ProductImageWriteSerializer,
+        responses={200: ProductImageSerializer, 400: ApiErrorSerializer,
+                   401: ApiErrorSerializer, 403: ApiErrorSerializer, 404: ApiErrorSerializer},
+    )
+    def patch(self, request, pk):
+        image = get_object_or_404(ProductImage.objects.select_related("product"), pk=pk)
+        serializer = ProductImageWriteSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        if not serializer.validated_data:
+            raise ValidationError({"image": ["Supply an image, alt text, or sort order."]})
+        changed = update_product_image(product_image=image, data=dict(serializer.validated_data))
+        return Response(ProductImageSerializer(changed).data)
+
+    @extend_schema(responses={204: None, 401: ApiErrorSerializer, 403: ApiErrorSerializer, 404: ApiErrorSerializer})
+    def delete(self, request, pk):
+        image = get_object_or_404(ProductImage.objects.select_related("product"), pk=pk)
+        delete_product_image(product_image=image)
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -2095,6 +2095,16 @@ Example response:
 
 React builds filter controls from backend metadata.
 
+The response also includes `category` options with the same value/label shape as `brand`.
+Without an active category scope, `specifications` is empty. Price bounds are the
+observed selling-price range (sale price where set); empty scopes return `null` bounds.
+Choice and boolean options reflect values on published products in the current
+brand/category scope. Numeric specifications report observed min/max values;
+definitions without observed values are omitted. The
+metadata endpoint accepts `brand` and `category` for scope, but does not apply
+search, price, availability, or technical filters. Each facet's options omit its
+own current selection as a restriction so customers can switch brands or categories.
+
 ---
 
 # 46. Authentication API
@@ -2568,6 +2578,12 @@ Useful composites:
 
 Search indexes should support product name and SKU/model lookup.
 
+The public search query uses case-insensitive substring matching on product name
+and SKU. PostgreSQL `pg_trgm` GIN expression indexes on `UPPER(name)` and
+`UPPER(sku)` support that generated SQL; small catalogs may still be scanned when
+the planner finds a scan cheaper. Relevance prioritizes exact SKU, SKU prefix,
+name prefix, then other partial matches, with deterministic ties.
+
 PostgreSQL trigram/full-text capabilities are sufficient initially.
 
 ### Order
@@ -2633,6 +2649,8 @@ Production product media uses S3-compatible object storage.
 
 Provider selection is deliberately deferred.
 
+For local development, validated product images use Django's filesystem storage under ignored `backend/media/`. The development URL configuration serves `/media/` only when `DEBUG` is true. Production requires a separately configured object-storage backend via `DJANGO_MEDIA_STORAGE_BACKEND`; it must not serve or persist product media on the application filesystem. The chosen backend must provide a public, cacheable image URL when configured for deployment.
+
 Examples of provider categories include:
 
 - managed object storage,
@@ -2660,6 +2678,8 @@ Staff image upload must validate:
 - configured maximum file size,
 - safe generated storage name,
 - image dimensions where appropriate.
+
+The initial limits are JPEG, PNG, or WebP; 5 MB per input and normalized output; at most 6000 pixels per side and 24 million pixels overall. The server decodes and rewrites images before storage, stripping source metadata and choosing a UUID-based key. Staff supply nonblank alt text. Staff may replace or delete images, and a conflicting reorder swaps the two positions. The first image by `sort_order` is the public primary image.
 
 Do not trust the original filename.
 

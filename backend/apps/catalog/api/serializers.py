@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.catalog.models import Brand, Category, Product, SpecificationChoice, SpecificationDefinition
+from apps.catalog.models import Brand, Category, Product, ProductImage, SpecificationChoice, SpecificationDefinition
 from apps.catalog.services import (
     create_product_draft,
     save_specification_choice,
@@ -152,16 +152,34 @@ class ProductSpecificationsField(serializers.ListField):
         return entries
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductImage
+        fields = ("id", "image_url", "alt_text", "sort_order", "width", "height", "created_at")
+
+    def get_image_url(self, obj) -> str:
+        return obj.image.url
+
+
+class ProductImageWriteSerializer(serializers.Serializer):
+    image = serializers.FileField()
+    alt_text = serializers.CharField(max_length=255, trim_whitespace=True)
+    sort_order = serializers.IntegerField(required=False, min_value=0, max_value=2_147_483_647)
+
+
 class ProductStaffSerializer(serializers.ModelSerializer):
     selling_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     specifications = ProductSpecificationsField(required=False)
+    images = ProductImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
         fields = (
             "id", "brand", "category", "sku", "slug", "name", "short_description", "full_description",
             "regular_price", "sale_price", "selling_price", "warranty_text", "stock_quantity", "is_published",
-            "specifications", "created_at", "updated_at",
+            "specifications", "images", "created_at", "updated_at",
         )
         read_only_fields = ("id", "selling_price", "stock_quantity", "created_at", "updated_at")
 
@@ -219,22 +237,50 @@ class PublicProductListSerializer(serializers.ModelSerializer):
     category = TaxonomySummarySerializer(read_only=True)
     selling_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     is_in_stock = serializers.SerializerMethodField()
+    primary_image = ProductImageSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Product
         fields = (
             "id", "brand", "category", "sku", "slug", "name", "short_description", "regular_price",
-            "sale_price", "selling_price", "stock_quantity", "is_in_stock",
+            "sale_price", "selling_price", "stock_quantity", "is_in_stock", "primary_image",
         )
 
     def get_is_in_stock(self, obj) -> bool:
         return obj.stock_quantity > 0
 
-
 class PublicProductDetailSerializer(PublicProductListSerializer):
     specifications = ProductSpecificationsField(read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
 
     class Meta(PublicProductListSerializer.Meta):
         fields = PublicProductListSerializer.Meta.fields + (
-            "full_description", "warranty_text", "specifications", "updated_at",
+            "full_description", "warranty_text", "specifications", "images", "updated_at",
         )
+
+
+class FilterOptionSerializer(serializers.Serializer):
+    value = serializers.SlugField()
+    label = serializers.CharField()
+
+
+class PriceBoundsSerializer(serializers.Serializer):
+    min = serializers.CharField(allow_null=True)
+    max = serializers.CharField(allow_null=True)
+
+
+class SpecificationFilterSerializer(serializers.Serializer):
+    key = serializers.SlugField()
+    label = serializers.CharField()
+    type = serializers.ChoiceField(choices=("choice", "boolean", "integer_range", "decimal_range"))
+    unit = serializers.CharField()
+    options = serializers.JSONField(required=False)
+    min = serializers.CharField(required=False, allow_null=True)
+    max = serializers.CharField(required=False, allow_null=True)
+
+
+class PublicFilterMetadataSerializer(serializers.Serializer):
+    brand = FilterOptionSerializer(many=True)
+    category = FilterOptionSerializer(many=True)
+    price = PriceBoundsSerializer()
+    specifications = SpecificationFilterSerializer(many=True)
