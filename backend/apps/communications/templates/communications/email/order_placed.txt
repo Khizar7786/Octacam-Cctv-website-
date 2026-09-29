@@ -1,0 +1,17 @@
+{% autoescape off %}Hello {{ customer_name }},
+
+Your OctaCam order {{ reference }} has been placed.
+
+Items:
+{% for item in items %}- {{ item.quantity }} x {{ item.product_name }} ({{ item.sku }}): PKR {{ item.unit_price }} each; line total PKR {{ item.line_subtotal }}
+{% endfor %}
+Product subtotal: PKR {{ subtotal }}
+Tax: PKR {{ tax_total }}
+Shipping: PKR {{ shipping_fee }}
+Total payable on delivery (cash on delivery): PKR {{ grand_total }}
+{% if guest_tracking_url %}
+Follow this order using your private link:
+{{ guest_tracking_url }}
+
+Keep this link private. Anyone with it can view this order's limited tracking details.
+{% endif %}{% endautoescape %}

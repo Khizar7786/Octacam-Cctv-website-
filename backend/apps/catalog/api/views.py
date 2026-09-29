@@ -11,7 +11,8 @@ from rest_framework.exceptions import ValidationError
 
 from apps.accounts.api.serializers import ApiErrorSerializer
 from apps.catalog.image_services import create_product_image, delete_product_image, update_product_image
-from apps.catalog.models import ProductImage, SpecificationDefinition
+from apps.catalog.inventory_services import adjust_product_stock
+from apps.catalog.models import InventoryMovement, Product, ProductImage, SpecificationDefinition
 from apps.catalog.selectors import (
     get_brands,
     get_categories,
@@ -28,6 +29,7 @@ from apps.core.permissions import IsStaff
 from .serializers import (
     BrandSerializer,
     CategorySerializer,
+    InventoryMovementSerializer,
     ProductImageSerializer,
     ProductImageWriteSerializer,
     PublicFilterMetadataSerializer,
@@ -36,6 +38,7 @@ from .serializers import (
     PublicProductListSerializer,
     SpecificationChoiceSerializer,
     SpecificationDefinitionSerializer,
+    StockAdjustmentWriteSerializer,
 )
 from .filters import parse_discovery_query
 
@@ -308,6 +311,38 @@ class StaffProductDetail(generics.RetrieveUpdateAPIView):
 
     def get_queryset(self):
         return get_staff_products()
+
+
+@extend_schema_view(
+    get=extend_schema(responses={200: InventoryMovementSerializer(many=True),
+                                 401: ApiErrorSerializer, 403: ApiErrorSerializer, 404: ApiErrorSerializer}),
+    post=extend_schema(request=StockAdjustmentWriteSerializer, responses={
+        201: InventoryMovementSerializer, 400: ApiErrorSerializer,
+        401: ApiErrorSerializer, 403: ApiErrorSerializer, 404: ApiErrorSerializer,
+    }),
+)
+class StaffProductStockAdjustments(generics.ListCreateAPIView):
+    permission_classes = [IsStaff]
+    pagination_class = CatalogPagination
+    http_method_names = ["get", "post", "options"]
+
+    def get_serializer_class(self):
+        return StockAdjustmentWriteSerializer if self.request.method == "POST" else InventoryMovementSerializer
+
+    def get_queryset(self):
+        product = get_object_or_404(Product, pk=self.kwargs["product_pk"])
+        return InventoryMovement.objects.filter(product=product).select_related("actor")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        movement = adjust_product_stock(
+            product_id=self.kwargs["product_pk"],
+            new_quantity=serializer.validated_data["new_quantity"],
+            reason=serializer.validated_data["reason"],
+            actor=request.user,
+        )
+        return Response(InventoryMovementSerializer(movement).data, status=status.HTTP_201_CREATED)
 
 
 class StaffProductImageCreate(APIView):

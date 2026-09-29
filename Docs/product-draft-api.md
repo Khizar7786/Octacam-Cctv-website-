@@ -1,6 +1,6 @@
 # Trying the product catalog API
 
-The catalog API lets staff define technical attributes per category, prepare products, manage images, and publish records. Public endpoints expose only published products whose brand and category are active. Public discovery supports search, filters, sorting, and filter metadata. Inventory adjustments remain later work.
+The catalog API lets staff define technical attributes per category, prepare products, manage images, publish records, and adjust stock. Public endpoints expose only published products whose brand and category are active. Public discovery supports search, filters, sorting, and filter metadata.
 
 ## Routes
 
@@ -15,6 +15,7 @@ All paths start with `/api/v1/`.
 | GET, PATCH | `staff/catalog/products/{id}/` | Staff; retrieve/edit, replace specifications, publish, or unpublish |
 | POST | `staff/catalog/products/{id}/images/` | Staff; upload a product image with alt text and optional order |
 | PATCH, DELETE | `staff/catalog/product-images/{id}/` | Staff; replace image, edit alt text, reorder, or remove |
+| GET, POST | `staff/catalog/products/{id}/stock-adjustments/` | Staff; paginated stock history or a reasoned stock adjustment |
 | GET, POST | `staff/catalog/categories/{id}/specifications/` | Staff; list or create definitions for one category |
 | PATCH | `staff/catalog/specifications/{id}/` | Staff; edit or deactivate a definition |
 | POST | `staff/catalog/specifications/{id}/choices/` | Staff; add a controlled choice |
@@ -63,7 +64,7 @@ GET /api/v1/catalog/products/?q=ds-2ce&brand=hikvision&category=cameras&min_pric
 
 ## Publication rules
 
-Product creation always produces `is_published: false` with `stock_quantity: 0`. `is_published` is rejected during creation, and stock remains read-only until the inventory workflow is added.
+Product creation always produces `is_published: false` with `stock_quantity: 0`. `is_published` is rejected during creation, and `stock_quantity` cannot be changed through ordinary product POST/PATCH.
 
 Staff publish an existing product with:
 
@@ -76,6 +77,21 @@ Staff publish an existing product with:
 The brand and category must be active, core product fields must be complete, prices must be valid, and every active required specification for the category must have a valid value. A failed publication returns 400 and leaves the product as a draft. Editing a published product cannot make it incomplete. Publishing and unpublishing create `PRODUCT_PUBLISHED` and `PRODUCT_UNPUBLISHED` audit events in the same transaction.
 
 Publication is separate from availability. A published product remains in public list and detail responses when `stock_quantity` is zero, with `is_in_stock: false`.
+
+## Staff stock adjustments and history
+
+Use `POST /api/v1/staff/catalog/products/{id}/stock-adjustments/` with a Bearer staff token:
+
+```json
+{
+  "new_quantity": 17,
+  "reason": "Physical stock count correction"
+}
+```
+
+`new_quantity` is the absolute quantity after the adjustment, from 0 through 2,147,483,647. The reason is required, trimmed, and limited to 500 characters. An unchanged quantity is rejected. The server locks the product row and atomically updates stock, writes an inventory movement, and writes a `PRODUCT_STOCK_ADJUSTED` audit event. A failed request leaves all three unchanged. The movement stores the previous quantity, new quantity, signed delta, staff actor, and time. Its `movement_type` is `manual_adjustment`; the response's `reason` is the staff explanation. Public product stock changes immediately, including when it reaches zero.
+
+Use `GET` on the same URL for newest-first history in the standard `count`, `next`, `previous`, `results` format. Anonymous visitors receive 401, customers receive 403, and missing products receive 404. The `actor` field is the staff user ID. Future checkout and cancellation workflows will add their own movement kinds and order linkage; they are not part of this endpoint.
 
 ## Product images
 
@@ -146,6 +162,7 @@ Locally, image files are stored in ignored `backend/media/products/{product_id}/
 10. Without authorization, request `GET /api/v1/catalog/products/` and `GET /api/v1/catalog/products/demo-camera-001/`.
 11. In Swagger, execute `POST /api/v1/staff/catalog/products/{product_id}/images/`, select a local JPEG/PNG/WebP file for `image`, and enter `alt_text` such as `Front view of the camera`. Use the returned ID with `PATCH /api/v1/staff/catalog/product-images/{id}/` to edit alt text or order. The public detail response then shows the image URL and dimensions.
 12. Request `GET /api/v1/catalog/filters/?category=cameras` to inspect available filter keys and values. Then try `GET /api/v1/catalog/products/?category=cameras&spec_resolution=4mp&sort=price_asc`. The zero-stock demo product remains in the results unless you add `availability=in_stock`.
+13. With the staff token, send `POST /api/v1/staff/catalog/products/{product_id}/stock-adjustments/` using the example above. Send `GET` to that same URL to inspect movement history, then revisit the public product detail to see the current stock.
 
 Use the IDs returned by your own API calls rather than assuming the example IDs exist. Lists use a page size of 20. Run the PostgreSQL catalog tests from `backend` with:
 

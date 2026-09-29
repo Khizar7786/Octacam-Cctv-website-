@@ -12,11 +12,18 @@ from rest_framework.views import APIView
 from apps.accounts.api.serializers import (
     ApiErrorSerializer,
     AuthResponseSerializer,
+    CustomerProfileUpdateSerializer,
     LoginSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetAcceptedSerializer,
+    PasswordResetRequestSerializer,
     RegistrationSerializer,
     UserSerializer,
 )
-from apps.accounts.services import issue_tokens, revoke_refresh, rotate_refresh
+from apps.accounts.services import (
+    confirm_password_reset, issue_tokens, request_password_reset, revoke_refresh, rotate_refresh,
+    update_customer_profile,
+)
 from apps.core.exceptions import AuthenticationError
 from apps.core.permissions import IsCustomer, IsStaff
 
@@ -151,12 +158,61 @@ class LogoutView(APIView):
         return response
 
 
+@method_decorator(csrf_protect, name="dispatch")
+class PasswordResetRequestView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "auth_password_reset"
+
+    @extend_schema(
+        tags=["auth"], request=PasswordResetRequestSerializer, parameters=[CSRF_HEADER],
+        responses={202: PasswordResetAcceptedSerializer,
+                   400: ApiErrorSerializer, 403: ApiErrorSerializer, 429: ApiErrorSerializer},
+    )
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        request_password_reset(serializer.validated_data["email"])
+        return Response(
+            {"detail": "If an account exists, password reset instructions will be sent."},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "auth_password_reset_confirm"
+
+    @extend_schema(
+        tags=["auth"], request=PasswordResetConfirmSerializer, parameters=[CSRF_HEADER],
+        responses={204: OpenApiResponse(description="Password changed."), 400: ApiErrorSerializer,
+                   403: ApiErrorSerializer, 429: ApiErrorSerializer},
+    )
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        confirm_password_reset(**serializer.validated_data)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class CustomerProfileView(APIView):
     permission_classes = [IsCustomer]
 
     @extend_schema(tags=["account"], responses={200: UserSerializer, 401: ApiErrorSerializer, 403: ApiErrorSerializer})
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+    @extend_schema(
+        tags=["account"], request=CustomerProfileUpdateSerializer,
+        responses={200: UserSerializer, 400: ApiErrorSerializer, 401: ApiErrorSerializer, 403: ApiErrorSerializer},
+    )
+    def patch(self, request):
+        serializer = CustomerProfileUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = update_customer_profile(user=request.user, data=serializer.validated_data)
+        return Response(UserSerializer(user).data)
 
 
 class StaffProfileView(APIView):

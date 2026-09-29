@@ -595,6 +595,14 @@ POST /api/v1/auth/password-reset/confirm/
 The request endpoint must return a neutral response regardless of whether the supplied email exists.
 
 Reset links use a time-limited signed/one-time token.
+The current API accepts `email` on request and `uid`, `token`, and `new_password`
+on confirmation. Both public POST routes require the CSRF header and are throttled.
+The request returns the same 202 response for active, inactive, and unknown accounts.
+The worker generates Django's password reset token when sending, rather than
+storing a plaintext token in outbox context. Its URL targets the future
+`/reset-password` storefront route on `PUBLIC_SITE_URL`; until that UI exists,
+the values can be submitted to the confirm API. A password change invalidates
+the token and previously issued JWTs.
 
 ---
 
@@ -1061,7 +1069,7 @@ otherwise regular_price
 
 Do not duplicate selling price into another mutable database column.
 
-Draft product writes use staff-only `POST` and `PATCH` endpoints. SKU values are trimmed and normalized to uppercase, slugs are normalized to lowercase, and both are case-insensitively unique. Prices use `numeric(12, 2)`, supporting PKR values through `9,999,999,999.99`. Draft creation always sets `is_published` to false and `stock_quantity` to zero; the draft API rejects attempts to change either field. Images, publication commands, and inventory adjustments remain separate later slices.
+Draft product writes use staff-only `POST` and `PATCH` endpoints. SKU values are trimmed and normalized to uppercase, slugs are normalized to lowercase, and both are case-insensitively unique. Prices use `numeric(12, 2)`, supporting PKR values through `9,999,999,999.99`. Draft creation always sets `is_published` to false and `stock_quantity` to zero; the draft API rejects attempts to change either field. Images and inventory adjustments use separate endpoints; publication is an explicit validated update to an existing product.
 
 Changing `regular_price` or `sale_price` creates one `PRODUCT_PRICE_CHANGED` audit event in the same transaction. The event stores the staff actor, product ID, timestamp, and before/after prices as decimal strings. Creating a draft does not count as a price change, and edits that leave both price fields unchanged do not create an event.
 
@@ -1276,6 +1284,8 @@ InventoryMovement
 id
 product_id
 quantity_delta
+previous_quantity
+new_quantity
 reason
 order_id nullable
 actor_id nullable
@@ -1301,6 +1311,10 @@ stock after: 8
 ```
 
 Manual staff stock changes must go through `InventoryService` rather than a generic field patch.
+The manual-adjustment slice stores the before and after quantity on each movement,
+uses `reason=manual_adjustment` as the machine-readable kind, and stores the
+staff-entered explanation in `note`. The order foreign key will be added with
+the Order model in the checkout slice.
 
 ---
 
@@ -1744,6 +1758,9 @@ next_attempt_at
 
 last_error nullable
 
+claim_token nullable
+locked_until nullable
+
 created_at
 sent_at nullable
 ```
@@ -1768,6 +1785,14 @@ PASSWORD_RESET
 ```
 
 Sensitive authentication secrets must not be stored in reusable plaintext outbox context longer than necessary.
+Password reset context contains only the user ID and a keyed fingerprint of the
+password/email state while delivery is pending; it is erased after send or permanent
+failure. Outbox rows are inserted inside the business transaction; the
+worker sends after commit. `dedupe_key` prevents duplicate outbox rows for the
+same logical event. External SMTP delivery is at least once: a provider can
+accept an email just before a worker crashes, so retries can occasionally send
+a duplicate. Order placement uses a stable event key and a nullable order foreign key;
+the survey foreign key will be added with the survey model.
 
 ---
 
@@ -1806,6 +1831,14 @@ Backend:
 
 The quote itself does not reserve stock.
 
+The current equipment-only implementation accepts product IDs/quantities and
+delivery city/province. A signed quote includes the item prices, current stock,
+shipping/tax calculation, and a 15-minute timestamp. Checkout configuration has
+no default: `CHECKOUT_SHIPPING_FEE`, `CHECKOUT_TAX_RATE_PERCENT`, and
+`CHECKOUT_SHIPPING_TAXABLE` must be explicitly supplied from approved business
+inputs. The current adapter supports one percentage on product line subtotals,
+plus shipping when explicitly marked taxable. Unconfigured checkout returns 503.
+
 ---
 
 ## 37.2 Place order
@@ -1833,6 +1866,12 @@ If pricing or availability changed:
 with updated information for explicit customer review.
 
 No order is created.
+
+The current placement endpoint also requires customer contact and a Pakistan
+delivery address. It rejects unknown fields, including a survey request, until
+the atomic combined survey checkout slice is built. It returns 201 for the first
+successful placement and 200 for an identical idempotent retry. The guest receipt
+and email include a signed, revocable link to the limited order tracking API.
 
 ---
 
@@ -2137,11 +2176,26 @@ GET   /api/v1/account/orders/{public_id}/
 
 The profile GET returns the signed-in customer only. Staff use `GET /api/v1/staff/profile/` to retrieve their own staff identity; both routes enforce role permissions in Django.
 
+The existing customer profile route also accepts PATCH for `full_name` and `phone`
+only. Names must be nonblank; phone may be cleared. Email is the login identifier
+and cannot change through this generic profile update because an email-change
+verification flow has not been specified. Password, role, account-state, and
+unknown fields are rejected. Account routes use the existing Bearer JWT
+authentication; the refresh cookie alone does not authenticate these requests.
+
 A customer may retrieve only orders where:
 
 ```text
 order.user == request.user
 ```
+
+Both history and detail filter by this stored user foreign key, never the checkout
+email. Guest orders remain unowned even when their email matches an account.
+Unowned and missing order details return the same 404. Responses use saved item,
+contact, address, and pricing snapshots; profile edits do not update these records.
+History is paginated at `ACCOUNT_ORDER_PAGE_SIZE` (20), ordered by newest
+`placed_at`, then ID, and prefetches items. Fulfillment, COD collection, and courier
+information are returned separately. No private operational fields are exposed.
 
 There is no customer cancellation endpoint.
 
@@ -2264,6 +2318,7 @@ Stock changes must use an explicit command:
 
 ```text
 POST /api/v1/staff/catalog/products/{id}/stock-adjustments/
+GET /api/v1/staff/catalog/products/{id}/stock-adjustments/
 ```
 
 Example:
@@ -2284,6 +2339,12 @@ The service records:
 - reason,
 - inventory movement,
 - audit event.
+
+The GET route is staff-only and returns newest-first paginated movement history.
+The request `reason` is the required staff explanation; it is stored as the
+movement `note` and returned as `reason`, alongside `movement_type`.
+The service locks the product row, rejects unchanged or out-of-range quantities,
+and writes stock, movement, and audit data in one transaction.
 
 Do not silently modify stock using a generic product PATCH.
 
@@ -2430,6 +2491,9 @@ Transactional email operations:
 GET  /api/v1/staff/communications/emails/
 POST /api/v1/staff/communications/emails/{id}/retry/
 ```
+
+The staff list is paginated, can filter by status, and omits template context.
+Manual retry makes a failed event due immediately and records an audit event.
 
 The MVP does not require a broad analytics system.
 
@@ -2721,7 +2785,14 @@ Worker logic:
 6. schedule bounded retries,
 7. preserve final failure details for staff.
 
-Sending the same logical email twice should be prevented with `dedupe_key`.
+The worker claims due rows with PostgreSQL `FOR UPDATE SKIP LOCKED` and a
+short lease, sends outside the claim transaction, and records the result using
+the claim token. Failures retry after bounded exponential delays for at most
+five automatic attempts; staff can retry a terminal failure. Only a safe error
+class or fixed internal reason is stored, never the rendered email or reset URL.
+Run `python manage.py process_email_outbox` continuously or use `--once` from a
+scheduled task. Local development uses Django's console email backend; production
+requires an explicit delivery backend, sender address, and HTTPS public site URL.
 
 ---
 

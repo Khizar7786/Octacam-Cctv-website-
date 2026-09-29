@@ -37,6 +37,7 @@ urlpatterns = [
     ),
     path("staff/catalog/products/", views.StaffProductList.as_view(), name="staff-products"),
     path("staff/catalog/products/<int:pk>/", views.StaffProductDetail.as_view(), name="staff-product"),
+    path("staff/catalog/products/<int:product_pk>/stock-adjustments/", views.StaffProductStockAdjustments.as_view(), name="staff-product-stock-adjustments"),
     path("staff/catalog/products/<int:product_pk>/images/", views.StaffProductImageCreate.as_view(), name="staff-product-images"),
     path("staff/catalog/product-images/<int:pk>/", views.StaffProductImageDetail.as_view(), name="staff-product-image"),
 ]

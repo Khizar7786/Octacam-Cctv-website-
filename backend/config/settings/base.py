@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.audit",
     "apps.catalog",
+    "apps.communications",
+    "apps.orders",
 ]
 
 MIDDLEWARE = [
@@ -91,6 +93,10 @@ REST_FRAMEWORK = {
         "auth_register": "5/hour",
         "auth_login": "10/min",
         "auth_refresh": "30/min",
+        "auth_password_reset": "5/hour",
+        "auth_password_reset_confirm": "10/hour",
+        "checkout_quote": "60/hour",
+        "checkout_place": "10/hour",
     },
 }
 SIMPLE_JWT = {
@@ -103,11 +109,31 @@ SIMPLE_JWT = {
 }
 AUTH_REFRESH_COOKIE_NAME = "octacam_refresh"
 AUTH_REFRESH_COOKIE_PATH = "/api/v1/auth/"
+PASSWORD_RESET_TIMEOUT = 60 * 60
+PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "http://127.0.0.1:8000").rstrip("/")
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "OctaCam local <noreply@localhost>")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "false").lower() == "true"
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() == "true"
+EMAIL_TIMEOUT = 10
+EMAIL_OUTBOX_MAX_ATTEMPTS = 5
+EMAIL_OUTBOX_CLAIM_SECONDS = 300
+CHECKOUT_SHIPPING_FEE = os.environ.get("CHECKOUT_SHIPPING_FEE")
+CHECKOUT_TAX_RATE_PERCENT = os.environ.get("CHECKOUT_TAX_RATE_PERCENT")
+CHECKOUT_SHIPPING_TAXABLE = os.environ.get("CHECKOUT_SHIPPING_TAXABLE")
 SPECTACULAR_SETTINGS = {
     "TITLE": "OctaCam API",
     "VERSION": "1.0.0",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
     "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {
+        "OrderStatusEnum": "apps.orders.models.ORDER_STATUS_CHOICES",
+        "EmailOutboxStatusEnum": "apps.communications.models.EMAIL_OUTBOX_STATUS_CHOICES",
+    },
 }
 
 LANGUAGE_CODE = "en-us"
@@ -123,3 +149,4 @@ PRODUCT_IMAGE_MAX_HEIGHT = 6000
 PRODUCT_IMAGE_MAX_PIXELS = 24_000_000
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CATALOG_PAGE_SIZE = 20
+ACCOUNT_ORDER_PAGE_SIZE = 20

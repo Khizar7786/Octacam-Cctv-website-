@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.catalog.models import Brand, Category, Product, ProductImage, SpecificationChoice, SpecificationDefinition
+from apps.catalog.models import Brand, Category, InventoryMovement, Product, ProductImage, SpecificationChoice, SpecificationDefinition
 from apps.catalog.services import (
     create_product_draft,
     save_specification_choice,
@@ -167,6 +167,24 @@ class ProductImageWriteSerializer(serializers.Serializer):
     image = serializers.FileField()
     alt_text = serializers.CharField(max_length=255, trim_whitespace=True)
     sort_order = serializers.IntegerField(required=False, min_value=0, max_value=2_147_483_647)
+
+
+class StockAdjustmentWriteSerializer(serializers.Serializer):
+    new_quantity = serializers.IntegerField(min_value=0, max_value=2_147_483_647)
+    reason = serializers.CharField(max_length=500, trim_whitespace=True, allow_blank=False)
+
+
+class InventoryMovementSerializer(serializers.ModelSerializer):
+    movement_type = serializers.CharField(source="reason", read_only=True)
+    reason = serializers.CharField(source="note", read_only=True)
+
+    class Meta:
+        model = InventoryMovement
+        fields = (
+            "id", "product", "previous_quantity", "new_quantity", "quantity_delta",
+            "movement_type", "reason", "actor", "created_at",
+        )
+        read_only_fields = fields
 
 
 class ProductStaffSerializer(serializers.ModelSerializer):

@@ -14,6 +14,21 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class CustomerProfileUpdateSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=255)
+    phone = serializers.CharField(max_length=30, allow_blank=True)
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            unsupported = set(data) - set(self.fields)
+            if unsupported:
+                raise serializers.ValidationError({
+                    field: ["This field cannot be edited through the profile endpoint."]
+                    for field in sorted(unsupported)
+                })
+        return super().to_internal_value(data)
+
+
 class AuthResponseSerializer(serializers.Serializer):
     user = UserSerializer()
     access = serializers.CharField()
@@ -60,3 +75,17 @@ class RegistrationSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetAcceptedSerializer(serializers.Serializer):
+    detail = serializers.CharField(read_only=True)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField(max_length=32)
+    token = serializers.CharField(max_length=128)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)

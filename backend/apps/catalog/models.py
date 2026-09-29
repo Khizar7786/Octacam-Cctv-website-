@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models.functions import Lower
 
@@ -92,6 +93,37 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"{self.product.sku} image {self.sort_order}"
+
+
+class InventoryMovement(models.Model):
+    class Reason(models.TextChoices):
+        MANUAL_ADJUSTMENT = "manual_adjustment", "Manual adjustment"
+        ORDER_PLACED = "order_placed", "Order placed"
+        ORDER_CANCELLED = "order_cancelled", "Order cancelled"
+
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="inventory_movements")
+    order = models.ForeignKey("orders.Order", null=True, blank=True, on_delete=models.PROTECT, related_name="inventory_movements")
+    quantity_delta = models.IntegerField()
+    previous_quantity = models.PositiveIntegerField()
+    new_quantity = models.PositiveIntegerField()
+    reason = models.CharField(max_length=20, choices=Reason.choices)
+    note = models.CharField(max_length=500, blank=True)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [models.Index(fields=["product", "-created_at", "-id"])]
+        constraints = [
+            models.CheckConstraint(condition=~models.Q(quantity_delta=0), name="inventory_delta_nonzero"),
+            models.CheckConstraint(
+                condition=models.Q(new_quantity=models.F("previous_quantity") + models.F("quantity_delta")),
+                name="inventory_movement_balanced",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.product_id}: {self.quantity_delta:+d} ({self.reason})"
 
 
 class SpecificationDefinition(models.Model):
