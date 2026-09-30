@@ -1553,6 +1553,12 @@ The database stores the nonce but does not depend on the customer-facing referen
 Changing the nonce invalidates previously issued links.
 
 Guest tracking pages expose only the information needed for that resource.
+The guest receipt must provide the link immediately so email delay does not
+block status access. Idempotent placement retries return the same link while its
+nonce remains unchanged. Receipt
+and tracking responses must disable caching and referrers and mark tracking as
+`noindex`. Redact the link token from application, proxy, hosting, and
+monitoring logs.
 
 They must never expose:
 
@@ -2413,6 +2419,14 @@ Invalid transitions return:
 ```
 
 The service layer owns the state machine.
+Staff order commands require the `version` returned by the order detail. An
+effective change increments it under an order row lock; a stale version returns
+`409 ORDER_CHANGED`. Repeated courier/COD commands that already match the saved
+state do not write another audit event. Each successful fulfillment stage change
+queues an `ORDER_STATUS_CHANGED` email event with the stage snapshot. All four
+forward stages are treated as key status changes for notifications. Courier and
+COD updates are visible in customer tracking but do not create separate emails.
+The paginated staff history endpoint exposes an order's audit events.
 
 ---
 

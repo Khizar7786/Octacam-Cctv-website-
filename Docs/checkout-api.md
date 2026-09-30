@@ -97,7 +97,33 @@ queues an `ORDER_PLACED` email event. Failure in any of those database writes
 rolls the whole transaction back. The outbox worker sends email after commit;
 delivery failure leaves the order in place for retry.
 
-Guest tracking uses `GET /api/v1/orders/track/{signed_token}/`. It shows the
-order reference, item and amount snapshots, status, COD status, and available
-courier fields. It omits contact details and the delivery address. A forged or
-revoked token returns the same 404 response as an unknown order.
+## Follow a guest order
+
+The guest placement receipt includes `guest_tracking_url` immediately, even if
+the email worker is stopped or delivery fails. Save that URL from the 201
+response and show it on the confirmation screen. A retry with the same
+`Idempotency-Key` and body returns the same URL with 200 unless the link was
+revoked in the meantime. The confirmation email
+contains that URL when the worker delivers it later. Signed-in orders return
+`guest_tracking_url: null`; customers use their account order history instead.
+
+Request the URL as a GET with no login or CSRF token:
+
+```powershell
+Invoke-RestMethod -Uri "<guest_tracking_url>"
+```
+
+The response shows only this order's reference, saved item and amount details,
+order status, separate COD payment status, and courier information when staff
+has entered it. It omits names, email, phone, address, internal IDs, notes, and
+audit history. The reference by itself cannot open the endpoint. Invalid,
+tampered, unknown, and revoked links all return the same `404 NOT_FOUND` API
+error. Changing an order's `guest_link_nonce` through a trusted internal
+operation revokes its old links; issuing a new link then uses the new nonce.
+
+Treat the link as a secret because anyone holding it can read that limited
+status. Receipt and tracking responses set `Cache-Control: private, no-store`,
+`Referrer-Policy: no-referrer`, and `X-Robots-Tag: noindex, nofollow`. Django's
+access log redacts the token segment. Production reverse proxies, hosting
+access logs, error reporting, and analytics must also redact it. The future
+storefront tracking page must be `noindex` and use a no-referrer policy.

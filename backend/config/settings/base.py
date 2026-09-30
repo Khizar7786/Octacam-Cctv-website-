@@ -1,7 +1,10 @@
 import os
+from copy import deepcopy
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
+
+from django.utils.log import DEFAULT_LOGGING
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -59,6 +62,11 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+LOGGING = deepcopy(DEFAULT_LOGGING)
+LOGGING["filters"]["redact_guest_tracking_token"] = {"()": "apps.orders.logging.RedactGuestTrackingToken"}
+for handler_name in ("console", "django.server", "mail_admins"):
+    LOGGING["handlers"][handler_name].setdefault("filters", []).append("redact_guest_tracking_token")
 
 ROOT_URLCONF = "config.urls"
 CSRF_FAILURE_VIEW = "apps.core.api.exception_handler.csrf_failure"
@@ -150,3 +158,4 @@ PRODUCT_IMAGE_MAX_PIXELS = 24_000_000
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CATALOG_PAGE_SIZE = 20
 ACCOUNT_ORDER_PAGE_SIZE = 20
+STAFF_ORDER_PAGE_SIZE = 20

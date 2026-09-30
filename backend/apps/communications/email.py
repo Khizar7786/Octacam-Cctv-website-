@@ -23,6 +23,8 @@ def password_fingerprint(user):
 def render_email(message):
     if message.template_name == "order_placed" and message.event_type == "ORDER_PLACED":
         return render_order_placed_email(message)
+    if message.template_name == "order_status_changed" and message.event_type == "ORDER_STATUS_CHANGED":
+        return render_order_status_changed_email(message)
     if message.template_name == "password_reset" and message.event_type == "PASSWORD_RESET":
         return render_password_reset_email(message)
     raise PermanentEmailError("Unsupported email template")
@@ -30,7 +32,7 @@ def render_email(message):
 
 def render_order_placed_email(message):
     from apps.orders.models import Order
-    from apps.orders.tracking import make_guest_tracking_token
+    from apps.orders.tracking import build_guest_tracking_url
 
     order_id = message.context.get("order_id")
     if isinstance(order_id, bool) or not isinstance(order_id, int) or order_id < 1:
@@ -43,8 +45,7 @@ def render_order_placed_email(message):
 
     guest_tracking_url = None
     if order.user_id is None:
-        token = make_guest_tracking_token(order)
-        guest_tracking_url = f"{settings.PUBLIC_SITE_URL}/api/v1/orders/track/{token}/"
+        guest_tracking_url = build_guest_tracking_url(order)
     context = {
         "customer_name": order.customer_name,
         "reference": order.reference,
@@ -66,6 +67,49 @@ def render_order_placed_email(message):
     }
     subject = render_to_string("communications/email/order_placed_subject.txt", context).strip()
     body = render_to_string("communications/email/order_placed.txt", context)
+    return subject, body
+
+
+def render_order_status_changed_email(message):
+    from apps.orders.models import Order
+    from apps.orders.tracking import build_guest_tracking_url
+
+    snapshot = message.context
+    if not isinstance(snapshot, dict):
+        raise PermanentEmailError("Order status event is invalid")
+    order_id = snapshot.get("order_id")
+    if isinstance(order_id, bool) or not isinstance(order_id, int) or order_id < 1:
+        raise PermanentEmailError("Order reference is invalid")
+    from_status = snapshot.get("from_status")
+    to_status = snapshot.get("to_status")
+    if (
+        from_status not in Order.Status.values
+        or to_status not in Order.Status.values
+        or from_status == to_status
+    ):
+        raise PermanentEmailError("Order status event is invalid")
+    courier_fields = ("courier_name", "tracking_number", "tracking_url")
+    if any(field not in snapshot or not isinstance(snapshot[field], str) for field in courier_fields):
+        raise PermanentEmailError("Courier snapshot is invalid")
+
+    order = Order.objects.filter(pk=order_id).first()
+    if order is None or message.order_id != order.pk:
+        raise PermanentEmailError("Order is no longer available")
+    if order.customer_email.casefold() != message.recipient.casefold():
+        raise PermanentEmailError("Order recipient does not match")
+
+    context = {
+        "customer_name": order.customer_name,
+        "reference": order.reference,
+        "from_status": Order.Status(from_status).label,
+        "to_status": Order.Status(to_status).label,
+        "courier_name": snapshot["courier_name"],
+        "tracking_number": snapshot["tracking_number"],
+        "tracking_url": snapshot["tracking_url"],
+        "guest_tracking_url": build_guest_tracking_url(order) if order.user_id is None else None,
+    }
+    subject = render_to_string("communications/email/order_status_changed_subject.txt", context).strip()
+    body = render_to_string("communications/email/order_status_changed.txt", context)
     return subject, body
 
 

@@ -49,6 +49,7 @@ class Order(models.Model):
     idempotency_key = models.UUIDField(unique=True)
     request_fingerprint = models.CharField(max_length=64)
     guest_link_nonce = models.UUIDField(default=uuid.uuid4)
+    version = models.PositiveIntegerField(default=0)
     placed_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)

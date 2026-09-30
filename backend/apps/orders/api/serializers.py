@@ -1,9 +1,11 @@
-from django.conf import settings
+from urllib.parse import urlsplit
+
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.audit.models import AuditEvent
 from apps.orders.models import Order, OrderItem
-from apps.orders.tracking import make_guest_tracking_token
+from apps.orders.tracking import build_guest_tracking_url
 
 
 class StrictSerializer(serializers.Serializer):
@@ -106,8 +108,7 @@ class OrderReceiptSerializer(serializers.ModelSerializer):
     def get_guest_tracking_url(self, order):
         if order.user_id is not None:
             return None
-        token = make_guest_tracking_token(order)
-        return f"{settings.PUBLIC_SITE_URL}/api/v1/orders/track/{token}/"
+        return build_guest_tracking_url(order)
 
 
 class GuestOrderTrackingSerializer(serializers.ModelSerializer):
@@ -142,4 +143,70 @@ class CustomerOrderDetailSerializer(CustomerOrderListSerializer):
             "delivery_postal_code", "delivery_country", "subtotal", "shipping_fee", "shipping_tax_amount",
             "tax_total", "tax_rate_percent", "shipping_taxable",
         )
+        read_only_fields = fields
+
+
+class StaffOrderFilterSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Order.Status.choices, required=False)
+    payment_status = serializers.ChoiceField(choices=Order.PaymentStatus.choices, required=False)
+    q = serializers.CharField(max_length=80, required=False, trim_whitespace=True)
+
+
+class StaffOrderListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = (
+            "public_id", "reference", "customer_name", "customer_email", "placed_at",
+            "status", "payment_method", "payment_status", "grand_total",
+            "courier_name", "tracking_number", "tracking_url", "version", "updated_at",
+        )
+        read_only_fields = fields
+
+
+class StaffOrderDetailSerializer(StaffOrderListSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+
+    class Meta(StaffOrderListSerializer.Meta):
+        fields = (
+            *StaffOrderListSerializer.Meta.fields,
+            "customer_phone", "delivery_address_line1", "delivery_address_line2",
+            "delivery_city", "delivery_province", "delivery_postal_code", "delivery_country",
+            "items", "subtotal", "shipping_fee", "shipping_tax_amount", "tax_total",
+            "tax_rate_percent", "shipping_taxable",
+        )
+        read_only_fields = fields
+
+
+class StaffOrderTransitionSerializer(StrictSerializer):
+    status = serializers.ChoiceField(choices=Order.Status.choices)
+    expected_version = serializers.IntegerField(min_value=0)
+
+
+class StaffOrderCourierSerializer(StrictSerializer):
+    expected_version = serializers.IntegerField(min_value=0)
+    courier_name = serializers.CharField(max_length=120, required=False, allow_blank=True, trim_whitespace=True)
+    tracking_number = serializers.CharField(max_length=120, required=False, allow_blank=True, trim_whitespace=True)
+    tracking_url = serializers.URLField(max_length=200, required=False, allow_blank=True)
+
+    def validate_tracking_url(self, value):
+        if value and urlsplit(value).scheme.lower() not in {"http", "https"}:
+            raise serializers.ValidationError("Use an HTTP or HTTPS tracking link.")
+        return value
+
+    def validate(self, attrs):
+        if not any(field in attrs for field in ("courier_name", "tracking_number", "tracking_url")):
+            raise serializers.ValidationError({"courier": ["Provide at least one courier field."]})
+        return attrs
+
+
+class StaffOrderCodCollectedSerializer(StrictSerializer):
+    expected_version = serializers.IntegerField(min_value=0)
+
+
+class StaffOrderAuditSerializer(serializers.ModelSerializer):
+    actor_email = serializers.EmailField(source="actor.email", read_only=True, allow_null=True)
+
+    class Meta:
+        model = AuditEvent
+        fields = ("id", "action", "actor_email", "before_data", "after_data", "metadata", "created_at")
         read_only_fields = fields
