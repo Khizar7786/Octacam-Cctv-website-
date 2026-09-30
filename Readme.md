@@ -1,6 +1,6 @@
 # OctaCam
 
-OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication and password reset APIs, customer profile editing and order history, catalog taxonomy, typed product specifications, staff product image management, publication controls, staff stock adjustments, public product APIs, equipment-only COD checkout, and a transactional email outbox worker. The storefront UI, order fulfillment, and survey booking have not been built yet.
+OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication and password reset APIs, customer profile editing and order history, catalog taxonomy, typed product specifications, staff product image management, publication controls, staff stock adjustments, public product APIs, equipment-only COD checkout, staff order processing, staff survey slot management, public survey availability, and a transactional email outbox worker. The storefront UI and survey booking have not been built yet.
 
 ## Run the backend locally
 
@@ -95,3 +95,7 @@ Staff can create product drafts, configure typed specifications per category, as
 ## Staff order processing
 
 After `manage.py migrate`, staff can list and inspect orders, move them through `placed → confirmed → packed → shipped → delivered`, enter manual courier information, mark COD collected independently, and cancel placed or confirmed orders while COD is uncollected. Eligible cancellation restores stock once and queues customer email. Each change is audited. Staff commands require the current order `version` to prevent stale edits. See [the staff order API guide](Docs/staff-order-api.md) for routes, request bodies, errors, and history. Later-stage and collected-COD cancellation need a business policy before enabling them.
+
+## Survey slots and availability
+
+Staff can create, inspect, and edit Lahore site-survey slots with a Bearer access token. The public availability endpoint lists future, open slots with room remaining, without exposing operational counts. Set the approved `SURVEY_SLOT_DURATION_MINUTES` before creating slots or changing their times; there is no default duration. The Lahore service boundary must be approved and configured before customer bookings are enabled. Booking endpoints are not part of this slice. See [the survey slot API guide](Docs/survey-slot-api.md) for the routes, time rules, conflicts, and how future bookings will consume capacity.

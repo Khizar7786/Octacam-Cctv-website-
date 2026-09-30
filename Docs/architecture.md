@@ -1581,6 +1581,7 @@ starts_at
 ends_at
 capacity
 is_open
+version
 
 created_by_id
 
@@ -1597,6 +1598,17 @@ capacity > 0
 Store timezone-aware timestamps.
 
 Display customer-facing survey time in `Asia/Karachi`.
+
+Staff supply an offset-aware `starts_at`. The server calculates `ends_at` from
+the required, positive `SURVEY_SLOT_DURATION_MINUTES` configuration; clients do
+not set the end time. An unconfigured duration prevents slot creation or a time
+edit. New and rescheduled slot starts must be in the future. A slot with any
+non-cancelled booking cannot move in time. Capacity cannot be reduced below its
+non-cancelled booking count. Closing a slot prevents new bookings but leaves
+existing appointments unchanged. Staff edits use `version` to reject stale
+updates. Exact duplicate start instants are rejected so capacity for one
+start is represented by one slot. Overlaps with different starts need an
+approved staff scheduling rule before automatic enforcement.
 
 Do not store a mutable `remaining_capacity` field.
 
@@ -2262,6 +2274,11 @@ GET  /api/v1/surveys/track/{signed_token}/
 
 Do not expose operational capacity details that the UX does not require.
 
+Return only future, open slots with derived remaining capacity above zero.
+Expose the public ID and start/end times in `Asia/Karachi`, without capacity or
+booking counts. This list is indicative: booking must lock the slot, recount
+non-cancelled bookings, and confirm capacity in the booking transaction.
+
 Standalone booking uses an idempotency key.
 
 ---
@@ -2448,6 +2465,14 @@ POST /api/v1/staff/surveys/slots/
 GET   /api/v1/staff/surveys/slots/{public_id}/
 PATCH /api/v1/staff/surveys/slots/{public_id}/
 ```
+
+Staff create a slot with offset-aware `starts_at`, positive `capacity`, and
+optional `is_open`; the configured duration determines `ends_at`. Staff slot
+responses show local start/end times, `version`, capacity, non-cancelled
+`booked_count`, and derived `remaining_capacity`. PATCH takes
+`expected_version` and may change `starts_at`, `capacity`, or `is_open` subject
+to the slot rules in section 32. See `Docs/survey-slot-api.md` for the current
+route contract. Slot management does not itself create bookings.
 
 Bookings:
 
@@ -3422,6 +3447,9 @@ The architecture intentionally does not invent the following values:
 - privacy/terms copy.
 
 These must be represented as configuration/business inputs rather than scattered constants in UI code.
+`SURVEY_SLOT_DURATION_MINUTES` is required for slot creation and time edits;
+there is no assumed slot length. The Lahore service boundary also needs an
+approved backend configuration rule before customer booking is enabled.
 
 ---
 

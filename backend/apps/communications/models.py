@@ -21,6 +21,9 @@ class EmailOutbox(models.Model):
 
     event_type = models.CharField(max_length=32, choices=EventType.choices)
     order = models.ForeignKey("orders.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="email_events")
+    survey_booking = models.ForeignKey(
+        "surveys.SurveyBooking", null=True, blank=True, on_delete=models.SET_NULL, related_name="email_events",
+    )
     recipient = models.EmailField()
     template_name = models.CharField(max_length=100)
     context = models.JSONField(default=dict)
