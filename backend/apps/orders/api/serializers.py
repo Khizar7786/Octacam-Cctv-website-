@@ -172,7 +172,7 @@ class StaffOrderDetailSerializer(StaffOrderListSerializer):
             "customer_phone", "delivery_address_line1", "delivery_address_line2",
             "delivery_city", "delivery_province", "delivery_postal_code", "delivery_country",
             "items", "subtotal", "shipping_fee", "shipping_tax_amount", "tax_total",
-            "tax_rate_percent", "shipping_taxable",
+            "tax_rate_percent", "shipping_taxable", "cancelled_at",
         )
         read_only_fields = fields
 
@@ -201,6 +201,11 @@ class StaffOrderCourierSerializer(StrictSerializer):
 
 class StaffOrderCodCollectedSerializer(StrictSerializer):
     expected_version = serializers.IntegerField(min_value=0)
+
+
+class StaffOrderCancelSerializer(StrictSerializer):
+    expected_version = serializers.IntegerField(min_value=0)
+    reason = serializers.CharField(max_length=500, allow_blank=False, trim_whitespace=True)
 
 
 class StaffOrderAuditSerializer(serializers.ModelSerializer):

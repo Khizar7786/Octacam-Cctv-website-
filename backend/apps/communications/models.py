@@ -8,6 +8,7 @@ class EmailOutbox(models.Model):
     class EventType(models.TextChoices):
         ORDER_PLACED = "ORDER_PLACED", "Order placed"
         ORDER_STATUS_CHANGED = "ORDER_STATUS_CHANGED", "Order status changed"
+        ORDER_CANCELLED = "ORDER_CANCELLED", "Order cancelled"
         SURVEY_CONFIRMED = "SURVEY_CONFIRMED", "Survey confirmed"
         SURVEY_CHANGED = "SURVEY_CHANGED", "Survey changed"
         SURVEY_CANCELLED = "SURVEY_CANCELLED", "Survey cancelled"

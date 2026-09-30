@@ -25,6 +25,8 @@ def render_email(message):
         return render_order_placed_email(message)
     if message.template_name == "order_status_changed" and message.event_type == "ORDER_STATUS_CHANGED":
         return render_order_status_changed_email(message)
+    if message.template_name == "order_cancelled" and message.event_type == "ORDER_CANCELLED":
+        return render_order_cancelled_email(message)
     if message.template_name == "password_reset" and message.event_type == "PASSWORD_RESET":
         return render_password_reset_email(message)
     raise PermanentEmailError("Unsupported email template")
@@ -110,6 +112,34 @@ def render_order_status_changed_email(message):
     }
     subject = render_to_string("communications/email/order_status_changed_subject.txt", context).strip()
     body = render_to_string("communications/email/order_status_changed.txt", context)
+    return subject, body
+
+
+def render_order_cancelled_email(message):
+    from apps.orders.models import Order
+    from apps.orders.tracking import build_guest_tracking_url
+
+    snapshot = message.context
+    if not isinstance(snapshot, dict):
+        raise PermanentEmailError("Order cancellation event is invalid")
+    order_id = snapshot.get("order_id")
+    if isinstance(order_id, bool) or not isinstance(order_id, int) or order_id < 1:
+        raise PermanentEmailError("Order reference is invalid")
+    if snapshot.get("from_status") not in (Order.Status.PLACED, Order.Status.CONFIRMED):
+        raise PermanentEmailError("Order cancellation event is invalid")
+    order = Order.objects.filter(pk=order_id).first()
+    if order is None or message.order_id != order.pk:
+        raise PermanentEmailError("Order is no longer available")
+    if order.customer_email.casefold() != message.recipient.casefold():
+        raise PermanentEmailError("Order recipient does not match")
+
+    context = {
+        "customer_name": order.customer_name,
+        "reference": order.reference,
+        "guest_tracking_url": build_guest_tracking_url(order) if order.user_id is None else None,
+    }
+    subject = render_to_string("communications/email/order_cancelled_subject.txt", context).strip()
+    body = render_to_string("communications/email/order_cancelled.txt", context)
     return subject, body
 
 

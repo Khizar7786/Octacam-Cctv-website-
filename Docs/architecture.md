@@ -1992,14 +1992,21 @@ Staff cancellation:
 POST /api/v1/staff/orders/{public_id}/cancel/
 ```
 
+For the first implementation, staff may cancel only `placed` or `confirmed`
+orders whose COD is `uncollected`. These orders are fully restocked from saved
+order-item quantities. Packed, shipped, delivered, and COD-collected orders are
+rejected until the business approves their eligibility, physical-stock handling,
+and any collection/refund process. A cancellation requires a staff reason and the
+current order version. A repeat request for an already cancelled order is a no-op.
+
 The service:
 
 1. locks the order,
-2. validates cancellation under the configured policy,
-3. locks affected products,
-4. changes the order to `cancelled`,
-5. restores stock only when appropriate,
-6. creates inventory movements,
+2. validates cancellation under the documented eligibility rule,
+3. verifies saved stock deductions and locks affected products,
+4. restores stock and creates inventory movements,
+5. changes the order to `cancelled`,
+6. records the cancellation time and increments the order version,
 7. creates audit events,
 8. creates customer email outbox event,
 9. commits once.

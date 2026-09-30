@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from apps.accounts.api.serializers import ApiErrorSerializer
 from apps.core.permissions import IsCustomer, IsStaff
 from apps.orders.fulfillment_services import (
-    OrderCommandConflict, mark_order_cod_collected, transition_order, update_order_courier,
+    OrderCommandConflict, cancel_order, mark_order_cod_collected, transition_order, update_order_courier,
 )
 from apps.orders.models import Order
 from apps.orders.pricing import CheckoutConfigurationError
@@ -27,7 +27,7 @@ from .serializers import (
     CheckoutConflictSerializer, GuestOrderTrackingSerializer, OrderReceiptSerializer,
     PlaceOrderRequestSerializer, QuoteRequestSerializer, QuoteResponseSerializer,
     CustomerOrderDetailSerializer, CustomerOrderListSerializer,
-    StaffOrderAuditSerializer, StaffOrderCodCollectedSerializer, StaffOrderCourierSerializer,
+    StaffOrderAuditSerializer, StaffOrderCancelSerializer, StaffOrderCodCollectedSerializer, StaffOrderCourierSerializer,
     StaffOrderDetailSerializer, StaffOrderFilterSerializer, StaffOrderListSerializer,
     StaffOrderTransitionSerializer,
 )
@@ -287,5 +287,19 @@ class StaffOrderCodCollectedView(StaffOrderCommandView):
         serializer = StaffOrderCodCollectedSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return self.command_response(lambda: mark_order_cod_collected(
+            public_id=public_id, actor=request.user, **serializer.validated_data,
+        ))
+
+
+class StaffOrderCancelView(StaffOrderCommandView):
+    @extend_schema(
+        tags=["staff"], request=StaffOrderCancelSerializer, parameters=PRIVATE_ORDER_RESPONSE_HEADERS,
+        responses={200: StaffOrderDetailSerializer, 400: ApiErrorSerializer, 401: ApiErrorSerializer,
+                   403: ApiErrorSerializer, 404: ApiErrorSerializer, 409: ApiErrorSerializer},
+    )
+    def post(self, request, public_id):
+        serializer = StaffOrderCancelSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self.command_response(lambda: cancel_order(
             public_id=public_id, actor=request.user, **serializer.validated_data,
         ))

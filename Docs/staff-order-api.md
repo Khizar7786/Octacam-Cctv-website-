@@ -51,8 +51,8 @@ Guest emails include the private tracking link. Courier details remain optional
 at the shipped stage because no courier completeness rule is approved.
 
 Skipping, repeating, reversing, or requesting `cancelled` through this endpoint
-returns `409 INVALID_STATUS_TRANSITION`. Cancellation will use a separate
-workflow. If another staff change used the version you saw, the response is
+returns `409 INVALID_STATUS_TRANSITION`. Use the separate cancellation command
+below. If another staff change used the version you saw, the response is
 `409 ORDER_CHANGED`; reload the order before trying again.
 
 ## Enter courier information
@@ -91,7 +91,40 @@ after collection returns the current order without a second audit entry. A
 stale version on an uncollected order returns `409 ORDER_CHANGED`. Courier and
 COD commands reject cancelled orders.
 
+## Cancel an eligible order
+
+After handling the customer's request through support, inspect the current
+order and confirm that its purchased units are still available to return to
+stock. For now, this command accepts only `placed` or `confirmed` orders with
+`uncollected` COD:
+
+```http
+POST /api/v1/staff/orders/{public_id}/cancel/
+Authorization: Bearer <staff_access_token>
+Content-Type: application/json
+
+{"expected_version":1,"reason":"Customer requested cancellation through support"}
+```
+
+A successful response returns the updated order with `status: "cancelled"`,
+`cancelled_at`, and a version increased by one. In one transaction, the service
+restores each saved item quantity, writes `ORDER_CANCELLED` inventory movements
+and an audit event containing the staff reason and movement IDs, and queues one
+customer cancellation email. The email worker sends it after commit. Repeating
+the command on an already cancelled order returns the current order without
+another stock movement, audit event, or email. A stale version on an active
+order returns `409 ORDER_CHANGED`.
+
+Packed, shipped, delivered, and COD-collected orders return
+`409 CANCELLATION_NOT_ALLOWED`. A missing product link, mismatched placement
+stock deductions, or unsafe stock quantity returns `409 RESTOCK_UNAVAILABLE`;
+no part of the cancellation is saved. Before enabling those later cases, the
+business must decide their eligibility, when
+physical goods re-enter sellable stock, and how collected COD is handled. There
+is no customer cancellation endpoint; customers continue to request it through
+support.
+
 All commands use the shared API error shape. There is no unrestricted order
-PATCH, and all three mutations lock the order row so concurrent staff updates
+PATCH, and all four mutations lock the order row so concurrent staff updates
 cannot silently overwrite each other. No values in this guide are live shipping,
 tax, courier, or delivery promises.

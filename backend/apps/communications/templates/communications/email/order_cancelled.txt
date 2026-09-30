@@ -1,0 +1,9 @@
+{% autoescape off %}Hello {{ customer_name }},
+
+Your OctaCam order {{ reference }} has been cancelled. If you have questions, please contact OctaCam support.
+{% if guest_tracking_url %}
+Follow this order using your private link:
+{{ guest_tracking_url }}
+
+Keep this link private. Anyone with it can view this order's limited tracking details.
+{% endif %}{% endautoescape %}

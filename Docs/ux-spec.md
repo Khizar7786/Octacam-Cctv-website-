@@ -131,7 +131,7 @@ Authenticated staff see a simple desktop-first workspace that still functions on
 | --- | --- |
 | Products | List/search by name or SKU, filter publication and stock; create/edit name, category, brand, images, specifications, regular/sale price, warranty, stock and published state. Preview customer-facing details; validate required values and show save results. |
 | Categories and brands | Maintain the taxonomy used by storefront navigation and filters; unpublished/empty brand destinations must not lead to misleading blank storefront sections. |
-| Orders | Find by reference/status; inspect immutable purchase snapshot and delivery details; move through allowed statuses, enter courier fields, mark COD collected independently; confirm cancellation/restock action and its result. |
+| Orders | Find by reference/status; inspect immutable purchase snapshot and delivery details; move through allowed statuses, enter courier fields, mark COD collected independently; confirm cancellation/restock action and its result. For now, offer staff cancellation only on placed or confirmed orders with uncollected COD, require a reason, and show that purchased quantities return to stock. Route other cases to support handling until policy is approved. |
 | Survey slots | Add date/time and capacity, inspect remaining availability, close future slots; warn when editing or closing a slot affects existing confirmed bookings. |
 | Survey bookings | View contact/site needs, status and related order when present; add private notes; mark confirmed/completed/cancelled; communicate material changes. |
 

@@ -120,6 +120,10 @@ class InventoryMovement(models.Model):
                 condition=models.Q(new_quantity=models.F("previous_quantity") + models.F("quantity_delta")),
                 name="inventory_movement_balanced",
             ),
+            models.UniqueConstraint(
+                fields=["order", "product"], condition=models.Q(reason="order_cancelled"),
+                name="one_cancellation_restock_per_product",
+            ),
         ]
 
     def __str__(self):

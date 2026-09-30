@@ -106,7 +106,7 @@ The booked appointment is **a site survey, not a guaranteed installation appoint
 - Equipment shipping uses one business-set flat fee nationwide. The fee and any published delivery limitations or estimates must be clear before checkout.
 - Applicable tax is added at checkout using business-approved rules and rates. The site must show the tax amount separately and preserve the calculated amounts on the placed order. The exact tax treatment and rates are a pre-launch business decision, not an assumption in this specification.
 - The server validates price, tax, shipping, and available stock when placing the order. A failed or duplicate submission must not create multiple orders or oversell stock.
-- Placing an order reduces available stock. Cancelling an order returns stock when appropriate; staff manage that action through the dashboard.
+- Placing an order reduces available stock. Staff may cancel a placed or confirmed order while COD is uncollected; that action returns its purchased quantities to available stock once. Packed, shipped, delivered, or COD-collected orders require a separate approved cancellation and restocking policy before this workflow can handle them.
 - The order records a snapshot of purchased item names, model/SKU, quantity, unit price, tax, shipping, total, delivery address, and chosen payment method so later catalog changes do not alter the order record.
 
 ### 6.3 Order progress and payment
@@ -115,7 +115,7 @@ The booked appointment is **a site survey, not a guaranteed installation appoint
 - COD payment starts as **uncollected** and is marked **collected** by staff after confirmation from fulfillment or the courier. Order and payment states remain distinct.
 - Staff can enter a courier name, tracking number, and tracking link where available. Courier updates are manual; the MVP has no courier API integration.
 - Customers can view order status and entered tracking details from their signed-in order history or a secure, unguessable link sent to the checkout email for guest orders. Guest links must expose only the relevant order and limited personal information.
-- Customers request cancellations through support under the published policy. Staff decide eligibility and update the order; there is no self-service cancellation button.
+- Customers request cancellations through support under the published policy. Staff decide eligibility and update the order; there is no self-service cancellation button. The published policy wording remains a pre-launch business input.
 - Returns and warranty cases are handled through the published support channels. The MVP does not include an online return-authorization workflow.
 
 ## 7. Customer accounts and communications

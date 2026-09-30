@@ -2,7 +2,7 @@ from django.urls import path
 
 from .views import (
     CheckoutPlaceView, CheckoutQuoteView, CustomerOrderDetailView,
-    CustomerOrderListView, GuestOrderTrackingView, StaffOrderCodCollectedView,
+    CustomerOrderListView, GuestOrderTrackingView, StaffOrderCancelView, StaffOrderCodCollectedView,
     StaffOrderCourierView, StaffOrderDetailView, StaffOrderHistoryView,
     StaffOrderListView, StaffOrderTransitionView,
 )
@@ -20,4 +20,5 @@ urlpatterns = [
     path("staff/orders/<uuid:public_id>/transition/", StaffOrderTransitionView.as_view(), name="staff-order-transition"),
     path("staff/orders/<uuid:public_id>/courier/", StaffOrderCourierView.as_view(), name="staff-order-courier"),
     path("staff/orders/<uuid:public_id>/mark-cod-collected/", StaffOrderCodCollectedView.as_view(), name="staff-order-cod-collected"),
+    path("staff/orders/<uuid:public_id>/cancel/", StaffOrderCancelView.as_view(), name="staff-order-cancel"),
 ]
