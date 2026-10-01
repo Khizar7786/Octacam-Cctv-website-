@@ -19,8 +19,8 @@ offset-free timestamp is rejected. The example date and time are illustrative,
 not a published appointment.
 
 The exact Lahore service boundary is still an approved business input. Slot
-management does not establish address eligibility. The later booking API must
-check the configured Lahore boundary before reserving a slot.
+management does not establish address eligibility. The standalone booking API
+checks the configured Lahore areas before reserving a slot.
 
 ## Staff routes
 
@@ -71,6 +71,9 @@ non-cancelled booking returns `409 SLOT_HAS_BOOKINGS`. Reducing capacity below
 that booking count returns `409 SLOT_CAPACITY_TOO_LOW`. Closing a slot prevents
 new bookings, while its existing appointments keep their saved time and
 booking state. A past slot cannot be reopened. There is no delete endpoint.
+Cancelled bookings retain their scheduled-time snapshots if an empty slot's
+time is changed. Use [staff booking rescheduling](staff-survey-api.md) to move
+a confirmed survey; editing the shared slot does not move its bookings.
 
 ## Public availability
 
@@ -85,10 +88,9 @@ staff details, or customer details. An empty `results` means no slot is
 currently offered; it does not mean an address is inside the Lahore service
 area.
 
-Availability is a current view, not a reservation. There is no booking
-endpoint in this slice, so API requests cannot yet consume a slot. The next
-booking service will lock the selected slot, recheck its time and open state,
-recount non-cancelled bookings, check capacity and the Lahore address rule, and
-create the booking in one transaction. A slot that filled or closed after this GET
-will be rejected at booking time and the customer will choose from refreshed
-availability.
+Availability is a current view, not a reservation. The standalone
+`POST /api/v1/surveys/bookings/` service locks the selected slot, rechecks its
+time and open state, recounts non-cancelled bookings, validates the configured
+Lahore area, and creates the booking in one transaction. A slot that filled or
+closed after this GET is rejected at booking time. See
+[the booking API guide](survey-booking-api.md) for safe retries and confirmation.

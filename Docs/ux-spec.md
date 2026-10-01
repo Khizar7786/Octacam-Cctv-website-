@@ -3,7 +3,7 @@
 **Status:** Final design specification for the MVP, subject to the business inputs listed in §14  
 **Companion source of truth:** `product-spec.md` (the attached OctaCam Product Specification)  
 **Market and language:** Pakistan; English storefront; PKR  
-**Last updated:** 21 September 2026
+**Last updated:** 1 October 2026
 
 ## 1. Purpose and scope
 
@@ -37,7 +37,7 @@ Primary journeys: a household or small-business buyer browsing by product type; 
 | Shop | All products; brand landing routes for **Hikvision** and **Dahua**; category routes for Cameras, DVR/NVR Recorders, Surveillance Storage, Accessories; search results. |
 | Product | One separately sellable model/capacity per page; images, overview, specifications, price, stock, warranty, delivery, support. |
 | Cart and checkout | Cart, single-page COD checkout, order confirmation. |
-| Surveys | Standalone Lahore survey booking and booking confirmation; optional survey section during checkout. |
+| Surveys | Standalone Lahore survey booking and booking confirmation; private guest survey status link; optional survey section during checkout. |
 | Account | Register, sign in, password reset, signed-in order history and order detail. |
 | Guest order | Secure email link to a scoped order-status page. |
 | Help and policies | Contact, About, Shipping, Returns, Warranty, Privacy, Terms. |
@@ -115,13 +115,48 @@ Entry points: header, homepage survey panel, product page support area, and rele
 
 Before submission, review the address, slot, and contact details. On slot conflict, retain entries and offer fresh available slots. On success, show a distinct booking reference, slot and address summary, support contact for changes, and confirmation-email notice. An unavailable email service does not invalidate a confirmed booking. Customers request changes or cancellation through support; staff update the booking. Do not show a self-service rescheduling or installation-payment action.
 
+The standalone API requires a declared site area from backend-configured approved Lahore coverage, in addition to the site city. When coverage is not configured, explain that booking is unavailable and preserve the form. Retain the same booking UUID and body after an uncertain submission, with the same guest or signed-in identity, to recover the confirmed result. The receipt says **free site survey confirmed; installation quoted and scheduled afterward**. Guests receive their private status link immediately as well as by email.
+
 ## 10. Accounts, order status, and contact
 
 - **Account:** register/sign in with email and password, reset password, see signed-in order history and individual order detail. Guest checkout remains prominent. Do not automatically attach historical guest orders to a later account.
 - **Order history/detail:** reference, date, item snapshot, total, order state (placed → confirmed → packed → shipped → delivered, or cancelled), and courier name/tracking link when staff has entered them. Display COD payment status **separately** (uncollected/collected), never infer it solely from shipment or delivery.
 - **Guest order link:** a long, unguessable emailed link opens only that order, with limited personal information. Avoid placing address or private contact details in a shareable page title or preview. If the link is invalid, show a neutral support path without revealing whether a reference belongs to someone else.
+- **Guest survey link:** show only that booking's reference, state, Pakistan-local slot date/time, site area/city, installation-after-survey explanation, and support path. Keep the street address, contact details, needs text, and internal notes off this limited page. Treat the link as private, prevent indexing and caching, and use a neutral support path for invalid links. Changes and cancellation remain support requests.
 - **Cancellations/returns/warranty:** show the published policy and support routes; no customer cancellation button, return portal, or online warranty claim workflow.
 - **Contact:** verified WhatsApp, phone, and email links on help pages and contextually near purchase decisions. Support is a route for questions, not a mandatory step in buying.
+
+### 10.1 Private guest survey status
+
+The private link on the guest receipt and in survey emails opens the status of
+that one booking without sign-in. Signing in later does not attach a guest
+booking to the account. Label the page **Site survey status**, with a generic
+page title and no personal details in previews. Explain that the link is private.
+
+Show the booking reference, textual **Confirmed**, **Completed**, or
+**Cancelled** status, scheduled start/end in **Pakistan time (Asia/Karachi)**,
+and site area/city. The current confirmed time changes when staff reschedule;
+a cancelled booking retains its last scheduled time, labelled **Cancelled
+survey time**. Completion does not promise an installation appointment. Keep
+**Free site survey; installation quoted and scheduled afterward** and the
+approved support route visible in every successful state. An associated
+equipment order has a separate status; this page does not change it.
+
+Do not show the street address, customer name/contact, needs description,
+equipment order details, internal notes, staff identities, or change history.
+Offer no edit, cancel, reschedule, or installation-payment control. Customers
+request changes through support using their booking reference.
+
+On initial load, show a textual loading state. A temporary connection/server
+error offers a retry and support; it must not imply the booking was cancelled
+or disappeared. An invalid or revoked link shows the same neutral **This
+survey link is unavailable. Contact support for help.** message, without
+revealing whether another customer's reference exists. Keep successful and
+error pages out of search indexes, browser/shared caches, referrers, and URL
+analytics. Reopening or retrying a valid link fetches current server status.
+Use stacked content on narrow screens, visible focus, and accessible textual
+status announcements. The tracking API is implemented; the frontend screen
+remains part of the later storefront slice.
 
 ## 11. Staff dashboard UX
 
@@ -133,9 +168,18 @@ Authenticated staff see a simple desktop-first workspace that still functions on
 | Categories and brands | Maintain the taxonomy used by storefront navigation and filters; unpublished/empty brand destinations must not lead to misleading blank storefront sections. |
 | Orders | Find by reference/status; inspect immutable purchase snapshot and delivery details; move through allowed statuses, enter courier fields, mark COD collected independently; confirm cancellation/restock action and its result. For now, offer staff cancellation only on placed or confirmed orders with uncollected COD, require a reason, and show that purchased quantities return to stock. Route other cases to support handling until policy is approved. |
 | Survey slots | Add future date/time and capacity; show times in Pakistan local time, booked count, and remaining availability. Staff can close a slot to new bookings while its existing appointments remain confirmed. Explain that booked slots cannot move in time or have capacity reduced below existing non-cancelled bookings; show a save conflict when another staff edit wins. |
-| Survey bookings | View contact/site needs, status and related order when present; add private notes; mark confirmed/completed/cancelled; communicate material changes. |
+| Survey bookings | Find by reference/status; inspect contact, site needs, current survey time, and related order when present; edit clearly labelled internal notes; view who changed the booking and when. Reschedule confirmed bookings to an available future slot, or mark them completed/cancelled. Show old and new times before confirming a move; explain that cancellation releases the survey place and does not cancel equipment. Completed/cancelled bookings have no reopen or reschedule action. |
 
 Sensitive customer data appears only to authorized staff. Use clear labels for internal-only notes and confirmations for consequential status, stock, or slot changes. Show who changed price, stock, order status, or booking status and when, consistent with the product spec. A failed save never appears successful.
+
+For survey changes, retain unsaved notes/slot choice on validation or capacity
+failure. If another staff write wins, reload the booking and let staff review
+the new state before another attempt. After an uncertain response, inspect
+current status/history before retrying; do not silently apply a new move.
+Show the confirmed change immediately and explain that the customer email is
+queued. Email delay does not undo it. Internal notes are not emailed. Completing
+a survey records staff confirmation that the visit occurred; installation is
+still quoted and scheduled offline afterward.
 
 **No launch banner editor:** the dashboard does not include banner upload, scheduling, or a general page editor under the chosen static-banner scope (§5).
 

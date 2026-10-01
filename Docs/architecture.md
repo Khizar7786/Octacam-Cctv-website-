@@ -1627,6 +1627,9 @@ reference
 
 slot_id
 
+scheduled_starts_at
+scheduled_ends_at
+
 user_id nullable
 related_order_id nullable
 
@@ -1643,6 +1646,7 @@ needs_description
 
 status
 internal_notes
+version
 
 idempotency_key
 request_fingerprint
@@ -1663,6 +1667,39 @@ cancelled
 
 A successfully booked survey is confirmed immediately.
 
+Booking times are snapshots copied from the locked slot at creation and
+rescheduling. They preserve the last scheduled time if a cancelled booking's
+now-empty slot is later edited. Migration backfills existing bookings from
+their current slots; dates changed before this migration cannot be recovered.
+Staff writes require the inspected `expected_version`; effective writes
+increment `version`. Stale writes return `409 BOOKING_CHANGED`.
+
+Only confirmed bookings may move to another open future slot, complete, or
+cancel. Completed/cancelled records cannot reopen or change terminal state.
+Completing is the staff assertion that the survey occurred, not installation
+scheduling. Internal notes remain editable in any state. With the current
+version, unchanged notes, an unchanged destination, or the same terminal state
+are no-ops: no additional version, audit, or email.
+
+The standalone booking API requires `site_area` and validates both a Lahore
+site city and membership in `SURVEY_LAHORE_SERVICE_AREAS`, a backend environment
+JSON array of approved area labels. There is no default boundary. Missing or
+invalid configuration blocks new bookings with `503 SURVEY_NOT_CONFIGURED`.
+This is declared-area validation, not geocoding; the business must approve
+labels that match coverage and require a finer rule before enabling an area
+whose boundary only partly lies inside coverage. The model permits blank areas
+for existing records, but new standalone submissions do not.
+
+`POST /api/v1/surveys/bookings/` accepts a slot public ID, contact, site address,
+and needs text with a UUID `Idempotency-Key` and CSRF protection. An optional
+Bearer token associates the booking with that account. The fingerprint includes
+the account/guest identity and all submitted fields. Same-key retries recover
+the existing booking before revalidating current coverage or availability.
+The slot lock serializes final-place races; the unique key protects submissions
+selecting different slots. Creation writes booking, confirmation audit, and
+email outbox in one transaction. First creation returns 201; identical replay
+returns 200; changed body or identity returns 409 IDEMPOTENCY_CONFLICT.
+
 Standalone bookings have:
 
 ```text
@@ -1677,7 +1714,7 @@ Cancelling one must not silently cancel the other.
 
 # 34. Survey guest tracking
 
-A planning decision extends the guest-tracking concept to standalone and order-linked survey bookings.
+Guest tracking applies to standalone and order-linked guest survey bookings.
 
 Endpoint:
 
@@ -1685,23 +1722,34 @@ Endpoint:
 GET /api/v1/surveys/track/{signed_token}/
 ```
 
-May expose:
+The tracking response exposes only:
 
 - booking reference,
 - booking status,
 - survey date/time,
-- relevant site-address summary,
-- customer-submitted needs description,
-- related order reference where appropriate,
-- support contact route.
+- site area/city,
+- explanation that installation is quoted and scheduled afterward.
+
+The tracking screen also shows the approved support route.
 
 Must not expose:
 
 - internal notes,
 - staff identity,
-- audit history.
+- audit history,
+- customer contact, street address, needs text, and equipment order details.
 
-**Specification alignment note:** `product-spec.md` already says a guest can track a booking, while `ux-spec.md` does not yet define the later tracking screen explicitly. The UX specification should be updated to document this page before implementation is considered complete.
+The standalone guest tracking API exposes only the booking reference, status,
+slot time, site area/city, and survey/installation explanation. Its deterministic
+signed link includes the public ID and revocable nonce using a survey-specific
+salt. The receipt returns this link immediately and the confirmation email
+includes it. Signed-in bookings have no guest link. The UX spec now defines the
+limited survey tracking page; its frontend remains a later implementation.
+Tracking reads the current booking state and its time snapshot after staff
+changes. Tokens never grant write or staff access; invalid/revoked/wrong-resource
+links return the same neutral 404. Success and error responses use
+`private, no-store`, `no-referrer`, and `noindex, nofollow`. Django access logs
+redact the tokens; production proxy/monitoring logs must do the same.
 
 ---
 
@@ -1742,9 +1790,11 @@ COURIER_UPDATED
 
 SURVEY_SLOT_CREATED
 SURVEY_SLOT_CHANGED
+SURVEY_BOOKING_CONFIRMED
 SURVEY_BOOKING_RESCHEDULED
 SURVEY_BOOKING_CANCELLED
 SURVEY_BOOKING_COMPLETED
+SURVEY_BOOKING_NOTES_UPDATED
 ```
 
 Sensitive values such as passwords or tokens must never be placed into audit JSON.
@@ -1810,7 +1860,8 @@ worker sends after commit. `dedupe_key` prevents duplicate outbox rows for the
 same logical event. External SMTP delivery is at least once: a provider can
 accept an email just before a worker crashes, so retries can occasionally send
 a duplicate. Order placement uses a stable event key and a nullable order foreign key;
-the survey foreign key will be added with the survey model.
+survey confirmation uses the nullable survey-booking foreign key and a snapshot
+of the confirmed slot times. Email delivery failure cannot undo a booking.
 
 ---
 
@@ -1991,6 +2042,17 @@ COMMIT
 ```
 
 Rescheduling must lock the booking and relevant old/new slots before checking destination capacity.
+
+Lock the booking first and check its version, then lock old/new slots in
+ascending database-ID order to serialize competing moves without deadlock.
+Recheck destination open/future state and count all non-cancelled bookings
+under these locks. A failed move retains the source booking and capacity.
+Cancellation and completion lock the booking then its slot, using the same
+slot lock as creation. Cancellation changes the persisted status once;
+availability derives from non-cancelled rows, so it releases one place without
+a mutable counter. Completion continues to count. Audit and customer email
+outbox snapshots commit with each material change; internal notes generate
+only a staff audit. No command changes an associated equipment order.
 
 ---
 
@@ -2279,7 +2341,8 @@ Expose the public ID and start/end times in `Asia/Karachi`, without capacity or
 booking counts. This list is indicative: booking must lock the slot, recount
 non-cancelled bookings, and confirm capacity in the booking transaction.
 
-Standalone booking uses an idempotency key.
+Standalone booking uses an idempotency key. See `Docs/survey-booking-api.md` for
+the current request, confirmation, coverage, conflict, and guest tracking contract.
 
 ---
 
@@ -2479,6 +2542,7 @@ Bookings:
 ```text
 GET /api/v1/staff/surveys/bookings/
 GET /api/v1/staff/surveys/bookings/{public_id}/
+GET /api/v1/staff/surveys/bookings/{public_id}/history/
 ```
 
 Reschedule:
@@ -2500,6 +2564,17 @@ PATCH /api/v1/staff/surveys/bookings/{public_id}/notes/
 ```
 
 Internal notes are never returned from public tracking endpoints.
+
+List supports reference substring `q` and `status` filters. List and history
+are paginated. Staff detail includes contact/address/needs, related order
+reference/public ID, internal notes, and version. History includes actor,
+timestamp, before/after state, and version; notes history is staff-only too.
+Every write takes `expected_version`. Reschedule takes `slot_public_id`;
+transition takes `status: completed|cancelled`; notes PATCH replaces
+`internal_notes` (blank clears it). Unknown write fields are rejected.
+All booking staff endpoints require active staff Bearer authentication and
+use private/no-store, no-referrer, and noindex headers, including errors.
+See `Docs/staff-survey-api.md` for conflicts and uncertain-response recovery.
 
 ---
 

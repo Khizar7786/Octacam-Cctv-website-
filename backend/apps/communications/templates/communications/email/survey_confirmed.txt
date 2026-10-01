@@ -1,0 +1,18 @@
+{% autoescape off %}Hello {{ customer_name }},
+
+Your free Lahore site survey {{ reference }} is confirmed.
+Survey time: {{ starts_at }} to {{ ends_at }} (Pakistan local time, Asia/Karachi).
+
+Site address:
+{{ site_address_line1 }}
+{% if site_address_line2 %}{{ site_address_line2 }}
+{% endif %}{{ site_area }}, {{ site_city }}
+
+This books a site survey. Installation is quoted and scheduled afterward.
+Equipment purchased elsewhere is subject to staff review. Contact OctaCam support for changes or cancellation.
+{% if guest_tracking_url %}
+Follow your survey using this private link:
+{{ guest_tracking_url }}
+
+Keep this link private. Anyone with it can view this survey's limited tracking details.
+{% endif %}{% endautoescape %}

@@ -1,0 +1,16 @@
+Hello {{ customer_name }},
+
+{% if rescheduled %}Your free Lahore site survey {{ reference }} has been rescheduled.
+
+Previous time: {{ previous_starts_at }} to {{ previous_ends_at }} (Pakistan time, Asia/Karachi).
+New confirmed time: {{ starts_at }} to {{ ends_at }} (Pakistan time, Asia/Karachi).
+{% else %}Your free Lahore site survey {{ reference }} has been marked completed by staff.
+
+Survey time: {{ starts_at }} to {{ ends_at }} (Pakistan time, Asia/Karachi).
+{% endif %}
+Installation is quoted and scheduled afterward. This update applies to the survey; any equipment order has its own status.
+{% if guest_tracking_url %}
+Private survey status: {{ guest_tracking_url }}
+Keep this link private.
+{% endif %}
+Please contact support if you need help or want to request a change.

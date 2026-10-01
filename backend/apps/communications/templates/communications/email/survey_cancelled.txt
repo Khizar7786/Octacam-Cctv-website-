@@ -1,0 +1,12 @@
+Hello {{ customer_name }},
+
+Your free Lahore site survey {{ reference }} has been cancelled by staff.
+
+Cancelled survey time: {{ starts_at }} to {{ ends_at }} (Pakistan time, Asia/Karachi).
+
+This cancellation applies to the survey only. Any equipment order remains separate. A site survey is not an installation appointment; installation is quoted and scheduled afterward.
+{% if guest_tracking_url %}
+Private survey status: {{ guest_tracking_url }}
+Keep this link private.
+{% endif %}
+Please contact support if you need help.

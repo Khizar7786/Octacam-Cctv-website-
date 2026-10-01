@@ -106,6 +106,7 @@ REST_FRAMEWORK = {
         "auth_password_reset_confirm": "10/hour",
         "checkout_quote": "60/hour",
         "checkout_place": "10/hour",
+        "survey_booking": "10/hour",
     },
 }
 SIMPLE_JWT = {
@@ -135,6 +136,7 @@ CHECKOUT_SHIPPING_FEE = os.environ.get("CHECKOUT_SHIPPING_FEE")
 CHECKOUT_TAX_RATE_PERCENT = os.environ.get("CHECKOUT_TAX_RATE_PERCENT")
 CHECKOUT_SHIPPING_TAXABLE = os.environ.get("CHECKOUT_SHIPPING_TAXABLE")
 SURVEY_SLOT_DURATION_MINUTES = os.environ.get("SURVEY_SLOT_DURATION_MINUTES")
+SURVEY_LAHORE_SERVICE_AREAS = os.environ.get("SURVEY_LAHORE_SERVICE_AREAS")
 SPECTACULAR_SETTINGS = {
     "TITLE": "OctaCam API",
     "VERSION": "1.0.0",
@@ -142,6 +144,7 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_NAME_OVERRIDES": {
         "OrderStatusEnum": "apps.orders.models.ORDER_STATUS_CHOICES",
+        "SurveyBookingStatusEnum": "apps.surveys.models.SURVEY_BOOKING_STATUS_CHOICES",
         "EmailOutboxStatusEnum": "apps.communications.models.EMAIL_OUTBOX_STATUS_CHOICES",
     },
 }

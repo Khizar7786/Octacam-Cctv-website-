@@ -37,6 +37,8 @@ class SurveyBooking(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     reference = models.CharField(max_length=24, unique=True, editable=False)
     slot = models.ForeignKey(SurveySlot, on_delete=models.PROTECT, related_name="bookings")
+    scheduled_starts_at = models.DateTimeField()
+    scheduled_ends_at = models.DateTimeField()
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="survey_bookings",
     )
@@ -53,6 +55,7 @@ class SurveyBooking(models.Model):
     needs_description = models.TextField()
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.CONFIRMED)
     internal_notes = models.TextField(blank=True)
+    version = models.PositiveIntegerField(default=0)
     idempotency_key = models.UUIDField(unique=True)
     request_fingerprint = models.CharField(max_length=64)
     guest_link_nonce = models.UUIDField(default=uuid.uuid4)
@@ -62,6 +65,15 @@ class SurveyBooking(models.Model):
     class Meta:
         ordering = ["-created_at", "-id"]
         indexes = [models.Index(fields=["slot", "status"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(scheduled_ends_at__gt=models.F("scheduled_starts_at")),
+                name="survey_booking_end_after_start",
+            ),
+        ]
 
     def __str__(self):
         return self.reference
+
+
+SURVEY_BOOKING_STATUS_CHOICES = SurveyBooking.Status.choices

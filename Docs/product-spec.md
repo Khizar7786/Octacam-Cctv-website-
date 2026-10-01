@@ -130,11 +130,14 @@ The booked appointment is **a site survey, not a guaranteed installation appoint
 ## 8. Lahore site-survey booking
 
 - Site-survey booking is available only for addresses within the launch Lahore service area. Equipment delivery remains nationwide.
+- The standalone API requires a declared site area from backend-configured approved coverage as well as a Lahore city. The business supplies the coverage list before bookings are enabled; city alone is insufficient, and address coverage must not be invented.
 - Customers can book a survey as part of an equipment order or as a standalone request. A standalone booking may concern equipment purchased elsewhere, subject to staff review.
 - Staff publish available survey slots through the dashboard. A slot has a date, time, and capacity; confirmed bookings consume capacity so the same capacity cannot be booked twice.
 - The survey is free at booking. No installation price or payment is collected through the site.
 - A booking collects customer name, email, phone, Lahore site address, selected slot, and a brief description of needs or existing equipment. The form explains that staff will review outside equipment and provide any installation quote after the survey.
 - The customer receives an immediate booking confirmation on screen and by email. Staff can view the booking, contact the customer, add internal notes, and mark it confirmed, completed, or cancelled.
+- Guest receipts and emails provide a secure private survey-status link showing only that booking's reference, status, scheduled time, and area/city. Contact details, the street address, needs, internal notes, and staff history remain private.
+- Staff may reschedule a confirmed booking to an open future slot with capacity, or mark it completed or cancelled. Completed and cancelled bookings are terminal in this workflow; corrections can be recorded in internal notes and handled through support. Cancellation releases one place; completed bookings retain their place in the historical slot count. Changes preserve who acted and the previous/new state, and queue customer email. Editing internal notes does not send email.
 - Customers request booking changes or cancellation through support. Staff manage available slots and communicate changes by email or direct contact.
 - Equipment orders and survey bookings have separate lifecycles. Cancelling one does not silently cancel the other; staff confirm with the customer when both are related.
 - Following the survey, staff quote and schedule installation offline. No online quote acceptance, installer dispatch, installation-calendar management, or installation-payment workflow is required for MVP.

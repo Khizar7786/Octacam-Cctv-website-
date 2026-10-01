@@ -14,19 +14,24 @@ from .email import PermanentEmailError, deliver_email
 from .models import EmailOutbox
 
 
-def enqueue_email(*, event_type, recipient, template_name, context, dedupe_key, order=None):
+def enqueue_email(*, event_type, recipient, template_name, context, dedupe_key, order=None, survey_booking=None):
     """Call within the business transaction; the worker sends after commit."""
     message, created = EmailOutbox.objects.get_or_create(
         dedupe_key=dedupe_key,
         defaults={
             "event_type": event_type,
             "order": order,
+            "survey_booking": survey_booking,
             "recipient": recipient,
             "template_name": template_name,
             "context": context,
         },
     )
-    if not created and (message.event_type != event_type or message.recipient != recipient or message.order_id != (order.pk if order else None)):
+    if not created and (
+        message.event_type != event_type or message.recipient != recipient
+        or message.order_id != (order.pk if order else None)
+        or message.survey_booking_id != (survey_booking.pk if survey_booking else None)
+    ):
         raise ValueError("Email dedupe key belongs to a different event")
     return message
 

@@ -5,7 +5,7 @@ import re
 class RedactGuestTrackingToken(logging.Filter):
     """Remove bearer tokens from Django's request and development access logs."""
 
-    pattern = re.compile(r"(/api/v1/orders/track/)[^/\s?]+")
+    pattern = re.compile(r"(/api/v1/(?:orders|surveys)/track/)[^/\s?]+")
 
     def filter(self, record):
         message = record.getMessage()

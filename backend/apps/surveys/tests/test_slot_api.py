@@ -28,6 +28,7 @@ def future_start(days=7):
 def make_booking(slot, *, status="confirmed", reference=None):
     return SurveyBooking.objects.create(
         slot=slot,
+        scheduled_starts_at=slot.starts_at, scheduled_ends_at=slot.ends_at,
         reference=reference or f"OCT-SURVEY-{uuid.uuid4().hex[:12].upper()}",
         customer_name="Lahore customer",
         customer_email="survey-customer@example.com",
