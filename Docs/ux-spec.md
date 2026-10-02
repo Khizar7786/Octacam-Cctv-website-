@@ -110,7 +110,24 @@ The summary lists item name/model, quantity, unit price and line total, any sale
 
 **Submission and race conditions:** before committing, refresh and display any changed price, shipping, tax, or stock; require explicit review of a changed total. If the selected survey slot has been taken, preserve the whole form and ask for another available slot **before submitting either the order or survey**. Do not silently omit a requested booking. While submitting, disable repeated submission, show progress, and give one clear result; an ambiguous network timeout should offer a safe status/retry path without risking a second order. The server remains authoritative for amounts, stock, and slot capacity.
 
+Combined placement uses the same contact and guest/account identity for both
+resources; review the independent site address with the selected survey time.
+After an uncertain response, retain one checkout UUID and the exact body,
+including quote token and survey choice, to recover both references. Do not
+change the slot, drop the survey, or generate a fresh UUID while the result is
+uncertain. A definitive slot failure creates neither resource: retain all
+entries, refresh availability, and require customer review of a new selection.
+If survey coverage is not configured, show an unavailable state and preserve
+the form; equipment-only continuation requires deliberate removal of the survey
+option. Display input errors against the nested site fields.
+
 **Confirmation:** show order reference, confirmed itemized total, COD amount, delivery details and current order state. When selected, show a **separate** survey reference, date/time, address, and booking state with text explaining its independent lifecycle. Offer order-status access and support even if email is delayed. Email contains the order details and secure guest tracking link; survey confirmation is sent separately as required by the product specification. Do not describe a booking as an installation appointment.
+
+The combined receipt includes the survey's free booking fee and installation
+explanation without adding them as equipment charges. Show separate private
+guest links for equipment and survey immediately. Recovered receipts may show
+later staff-managed states; retrying creation must not suggest that a cancelled
+order or survey was rebooked. Changes remain support requests for each resource.
 
 ## 9. Standalone site-survey flow
 
@@ -164,6 +181,15 @@ remains part of the later storefront slice.
 ## 11. Staff dashboard UX
 
 Authenticated staff see a simple desktop-first workspace that still functions on a smaller screen. One staff permission level applies. The opening view highlights new orders, orders needing action, and upcoming survey bookings, with direct links to each record; no broad analytics suite.
+
+The opening view uses short, bounded lists for recent orders, upcoming surveys,
+recent staff activity, and failed transactional emails. Counts indicate more
+records; each section links to its paginated list. Show a useful empty state
+when there is no work and a retryable loading error when the summary cannot be
+fetched. Email rows show delivery state and whether manual retry is available.
+Disable the retry action for queued, sent, claimed, automatically due, or
+permanently invalid events, and refresh the row after an attempted retry.
+Repeated clicks must not imply that another email was queued.
 
 | Screen | Main staff tasks and states |
 | --- | --- |

@@ -88,16 +88,19 @@ class StaffSurveySlotPatchSerializer(StrictSerializer):
         return attrs
 
 
-class SurveyBookingRequestSerializer(StrictSerializer):
+class SurveySiteRequestSerializer(StrictSerializer):
     slot_public_id = serializers.UUIDField()
-    customer_name = serializers.CharField(max_length=160)
-    customer_email = serializers.EmailField()
-    customer_phone = serializers.CharField(max_length=40)
     site_address_line1 = serializers.CharField(max_length=255)
     site_address_line2 = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     site_area = serializers.CharField(max_length=120)
     site_city = serializers.CharField(max_length=120)
     needs_description = serializers.CharField(max_length=3000)
+
+
+class SurveyBookingRequestSerializer(SurveySiteRequestSerializer):
+    customer_name = serializers.CharField(max_length=160)
+    customer_email = serializers.EmailField()
+    customer_phone = serializers.CharField(max_length=40)
 
 
 class SurveyBookingSlotSerializer(serializers.Serializer):
@@ -144,6 +147,7 @@ class GuestSurveyTrackingSerializer(serializers.ModelSerializer):
 class StaffSurveyBookingFilterSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=SurveyBooking.Status.choices, required=False)
     q = serializers.CharField(max_length=80, required=False)
+    upcoming = serializers.BooleanField(required=False, default=False)
 
 
 class RelatedSurveyOrderSerializer(serializers.ModelSerializer):

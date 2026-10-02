@@ -130,8 +130,9 @@ The booked appointment is **a site survey, not a guaranteed installation appoint
 ## 8. Lahore site-survey booking
 
 - Site-survey booking is available only for addresses within the launch Lahore service area. Equipment delivery remains nationwide.
-- The standalone API requires a declared site area from backend-configured approved coverage as well as a Lahore city. The business supplies the coverage list before bookings are enabled; city alone is insufficient, and address coverage must not be invented.
+- Standalone and combined checkout booking require a declared site area from backend-configured approved coverage as well as a Lahore site city. The business supplies the coverage list before bookings are enabled; equipment delivery city alone is insufficient, and address coverage must not be invented.
 - Customers can book a survey as part of an equipment order or as a standalone request. A standalone booking may concern equipment purchased elsewhere, subject to staff review.
+- Combined checkout creates the equipment order and requested survey together or creates neither. A slot/capacity failure must not leave an order or deduct stock. Safe retries recover both references once. Survey contact follows checkout contact, while the site address may differ from equipment delivery. The free survey adds no charge to equipment COD totals.
 - Staff publish available survey slots through the dashboard. A slot has a date, time, and capacity; confirmed bookings consume capacity so the same capacity cannot be booked twice.
 - The survey is free at booking. No installation price or payment is collected through the site.
 - A booking collects customer name, email, phone, Lahore site address, selected slot, and a brief description of needs or existing equipment. The form explains that staff will review outside equipment and provide any installation quote after the survey.

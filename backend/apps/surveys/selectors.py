@@ -25,7 +25,7 @@ def staff_slots():
     return slots_with_occupancy().order_by("starts_at", "id")
 
 
-def staff_bookings(*, user, status=None, q=None):
+def staff_bookings(*, user, status=None, q=None, upcoming=False, now=None):
     if not user or not user.is_authenticated or not user.is_active or not user.is_staff:
         return SurveyBooking.objects.none()
     bookings = SurveyBooking.objects.select_related("slot", "related_order")
@@ -33,7 +33,16 @@ def staff_bookings(*, user, status=None, q=None):
         bookings = bookings.filter(status=status)
     if q:
         bookings = bookings.filter(reference__icontains=q)
+    if upcoming:
+        return bookings.filter(
+            status=SurveyBooking.Status.CONFIRMED,
+            scheduled_starts_at__gt=now if now is not None else timezone.now(),
+        ).order_by("scheduled_starts_at", "id")
     return bookings.order_by("-created_at", "-id")
+
+
+def get_upcoming_survey_bookings(*, user, now=None):
+    return staff_bookings(user=user, upcoming=True, now=now)
 
 
 def booking_audit_history(*, booking):

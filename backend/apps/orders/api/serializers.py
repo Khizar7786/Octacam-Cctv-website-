@@ -6,6 +6,8 @@ from rest_framework import serializers
 from apps.audit.models import AuditEvent
 from apps.orders.models import Order, OrderItem
 from apps.orders.tracking import build_guest_tracking_url
+from apps.orders.services import order_survey_key
+from apps.surveys.api.serializers import SurveyBookingReceiptSerializer, SurveySiteRequestSerializer
 
 
 class StrictSerializer(serializers.Serializer):
@@ -47,6 +49,18 @@ class PlaceOrderRequestSerializer(CartSerializer):
     delivery_address_line2 = serializers.CharField(max_length=255, required=False, allow_blank=True)
     delivery_postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
     delivery_country = serializers.ChoiceField(choices=["PK"], required=False, default="PK")
+    survey = SurveySiteRequestSerializer(required=False, allow_null=True)
+
+    def to_internal_value(self, data):
+        try:
+            return super().to_internal_value(data)
+        except serializers.ValidationError as exc:
+            # Keep the shared flat error contract usable for the nested survey form.
+            if isinstance(exc.detail, dict) and isinstance(exc.detail.get("survey"), dict):
+                errors = {field: messages for field, messages in exc.detail.items() if field != "survey"}
+                errors.update({f"survey.{field}": messages for field, messages in exc.detail["survey"].items()})
+                raise serializers.ValidationError(errors) from exc
+            raise
 
 
 class QuoteItemSerializer(serializers.Serializer):
@@ -93,6 +107,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderReceiptSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     guest_tracking_url = serializers.SerializerMethodField()
+    survey = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -101,7 +116,7 @@ class OrderReceiptSerializer(serializers.ModelSerializer):
             "customer_name", "customer_email", "customer_phone",
             "delivery_address_line1", "delivery_address_line2", "delivery_city", "delivery_province",
             "delivery_postal_code", "delivery_country", "items", "subtotal", "shipping_fee",
-            "shipping_tax_amount", "tax_total", "grand_total", "guest_tracking_url",
+            "shipping_tax_amount", "tax_total", "grand_total", "guest_tracking_url", "survey",
         )
 
     @extend_schema_field(serializers.URLField(allow_null=True))
@@ -109,6 +124,11 @@ class OrderReceiptSerializer(serializers.ModelSerializer):
         if order.user_id is not None:
             return None
         return build_guest_tracking_url(order)
+
+    @extend_schema_field(SurveyBookingReceiptSerializer(allow_null=True))
+    def get_survey(self, order):
+        booking = order.survey_bookings.select_related("slot").filter(idempotency_key=order_survey_key(order)).first()
+        return SurveyBookingReceiptSerializer(booking).data if booking else None
 
 
 class GuestOrderTrackingSerializer(serializers.ModelSerializer):

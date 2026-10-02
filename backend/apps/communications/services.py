@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.audit.services import record_audit_event
 
@@ -116,15 +116,27 @@ def process_email_batch(*, limit=20):
     return outcomes
 
 
+def retry_block_reason(message, *, now=None):
+    now = now or timezone.now()
+    if message.status != EmailOutbox.Status.FAILED or message.claim_token is not None or (
+        message.locked_until is not None and message.locked_until > now
+    ):
+        return "Only a failed, unclaimed email can be retried."
+    if message.event_type == EmailOutbox.EventType.PASSWORD_RESET and message.last_error.startswith("PermanentEmailError"):
+        return "This reset request expired or is no longer valid. Request a new link."
+    if message.next_attempt_at is not None and message.next_attempt_at <= now:
+        return "This email is already due for automatic retry."
+    return None
+
+
 @transaction.atomic
 def retry_email(*, email_id, actor):
+    if not actor or not actor.is_authenticated or not actor.is_active or not actor.is_staff:
+        raise PermissionDenied("Staff access is required.")
     message = get_object_or_404(EmailOutbox.objects.select_for_update(), pk=email_id)
-    if message.status != EmailOutbox.Status.FAILED or (
-        message.locked_until is not None and message.locked_until > timezone.now()
-    ):
-        raise ValidationError({"status": ["Only a failed, unclaimed email can be retried."]})
-    if message.event_type == EmailOutbox.EventType.PASSWORD_RESET and message.last_error.startswith("PermanentEmailError"):
-        raise ValidationError({"status": ["This reset request expired or is no longer valid. Request a new link."]})
+    reason = retry_block_reason(message)
+    if reason:
+        raise ValidationError({"status": [reason]})
     message.status = EmailOutbox.Status.PENDING
     message.next_attempt_at = timezone.now()
     message.claim_token = None

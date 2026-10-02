@@ -1928,7 +1928,7 @@ Backend:
 
 The quote itself does not reserve stock.
 
-The current equipment-only implementation accepts product IDs/quantities and
+The quote calculates equipment totals from product IDs/quantities and
 delivery city/province. A signed quote includes the item prices, current stock,
 shipping/tax calculation, and a 15-minute timestamp. Checkout configuration has
 no default: `CHECKOUT_SHIPPING_FEE`, `CHECKOUT_TAX_RATE_PERCENT`, and
@@ -1964,11 +1964,14 @@ with updated information for explicit customer review.
 
 No order is created.
 
-The current placement endpoint also requires customer contact and a Pakistan
-delivery address. It rejects unknown fields, including a survey request, until
-the atomic combined survey checkout slice is built. It returns 201 for the first
-successful placement and 200 for an identical idempotent retry. The guest receipt
-and email include a signed, revocable link to the limited order tracking API.
+The placement endpoint requires customer contact and a Pakistan delivery address,
+and accepts an optional nested `survey` with site address, needs, and a slot
+public ID. It rejects unknown fields, including client-supplied survey contact,
+prices, associations, or booking keys. Omitted/null means equipment only. It
+returns 201 for first placement and 200 for an identical idempotent retry. The
+receipt adds `survey` (booking receipt or null). Guest receipts/emails provide
+separate signed, revocable links for order and survey, each privacy-limited.
+See `Docs/checkout-api.md` for the combined request and conflict contract.
 
 ---
 
@@ -2018,19 +2021,20 @@ If a shopper requests both equipment and a survey, initial creation belongs in o
 BEGIN
 
 lock Product rows
-lock SurveySlot
 
 validate prices
 validate stock
-validate survey capacity
 
-create Order
+create Order (unique checkout idempotency key)
 create OrderItems
 decrement stock
+create inventory/order audit/order outbox rows (uncommitted)
 
-create SurveyBooking
-
-create inventory/audit/outbox rows
+call book_survey inside the order transaction:
+    lock SurveySlot
+    validate Lahore site and survey capacity
+    create SurveyBooking linked to Order
+    create survey audit/outbox rows
 
 COMMIT
 ```
@@ -2041,11 +2045,37 @@ If the selected survey slot is no longer available:
 ROLLBACK
 ```
 
-No order is created and no stock is changed.
+No order, stock deduction, booking, inventory movement, audit, or outbox event
+from the failed submission is committed. Saving the order identity before
+booking resolves checkout-key uniqueness even for concurrent disjoint carts;
+the survey service then joins the same outer transaction. Products always lock
+before slots. Standalone booking and staff rescheduling use the same slot locks.
 
 The frontend preserves the form and requires another slot to be chosen before either requested action is committed.
 
 After successful creation, order and survey become separate resources with separate lifecycles.
+
+The optional survey inherits checkout contact and account/guest identity but
+requires its own eligible Lahore site address, regardless of delivery city.
+The free survey does not change the equipment quote or COD totals. Validation
+uses the existing approved-area configuration and saved slot times. Capacity
+failure returns `409 SURVEY_SLOT_UNAVAILABLE`, configuration failure returns
+`503 SURVEY_NOT_CONFIGURED`, and input errors use `survey.<field>` paths.
+
+Checkout's fingerprint includes all survey inputs when opted in; existing
+equipment-only fingerprints remain unchanged. The survey service accepts a
+trusted `related_order` argument and includes that association in its own
+fingerprint. Its internal booking key is UUIDv5 derived from the new order's
+public ID and a fixed checkout-survey name, separate from standalone keys.
+The receipt finds that original linked booking using the derived key, even
+after cancellation/rescheduling. No customer-supplied association is accepted.
+
+Same-key/body/identity retries recover both resources before quote, pricing,
+coverage, or capacity revalidation and produce no extra stock/audit/email
+effects. Changing the selected survey, opting out, or changing identity after
+success conflicts. The combined receipt includes both current states, separate
+references and private guest links; creation queues two confirmation emails.
+Future lifecycle changes continue through each resource's own staff service.
 
 ---
 
@@ -2620,19 +2650,27 @@ Dashboard summary:
 GET /api/v1/staff/overview/
 ```
 
-May include:
-
-- new orders,
-- orders requiring action,
-- upcoming survey bookings,
-- failed transactional emails,
-- recent activity.
+The overview returns counts of placed orders, open orders (placed, confirmed,
+packed, or shipped), confirmed future surveys, and failed outbox emails. It also
+returns at most five records in each matching preview: recent orders in placement
+order, upcoming surveys in appointment order, recent audit actions, and failed
+emails. Order and survey previews include their public IDs for direct links.
+Audit previews omit before/after snapshots and private metadata. The overview
+is a bounded summary, not a growing list; counts can change as staff work, so
+opening a paginated list fetches its current state.
 
 Audit activity:
 
 ```text
 GET /api/v1/staff/activity/
 ```
+
+This global feed is paginated (20 per page), newest first with ID as the tie
+break. It returns action, resource type/ID, actor email, and timestamp, but not
+the audit payload. Existing per-record histories provide the detailed changes.
+The existing paginated order list shows recent orders; the survey booking list
+accepts `upcoming=true` to show confirmed future surveys nearest first. Each
+list has a stable ID tie break and keeps its existing staff-only permission.
 
 Transactional email operations:
 
@@ -2641,8 +2679,19 @@ GET  /api/v1/staff/communications/emails/
 POST /api/v1/staff/communications/emails/{id}/retry/
 ```
 
-The staff list is paginated, can filter by status, and omits template context.
-Manual retry makes a failed event due immediately and records an audit event.
+The staff email list is paginated (20 per page), can filter by status, and omits
+template context, reset links, and worker claim tokens. It includes
+`retry_available` so staff can offer the action only for a failed event that is
+neither claimed nor already due for automatic retry. An expired or invalid
+password reset request cannot be retried. The retry service locks the outbox
+row, rechecks eligibility, makes an eligible event due immediately, and records
+one audit event. Pending or sent work, concurrent repeat requests, and claimed
+work cannot be queued again through this action. The existing worker still
+claims and delivers the event.
+
+All these operational responses require active staff authentication and send
+`Cache-Control: private, no-store`, `Referrer-Policy: no-referrer`, and
+`X-Robots-Tag: noindex, nofollow`.
 
 The MVP does not require a broad analytics system.
 

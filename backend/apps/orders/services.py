@@ -11,6 +11,7 @@ from apps.audit.services import record_audit_event
 from apps.catalog.models import InventoryMovement, Product
 from apps.communications.models import EmailOutbox
 from apps.communications.services import enqueue_email
+from apps.surveys.booking_services import BOOKING_FIELDS, SurveyBookingConflict, book_survey
 
 from .models import Order, OrderItem
 from .pricing import PricingPolicy
@@ -113,7 +114,34 @@ def _request_fingerprint(data, user_id):
         "delivery_province": data["delivery_province"],
         "delivery_postal_code": data.get("delivery_postal_code", ""),
     }
+    # Preserve fingerprints for existing equipment-only orders; omitted/null both mean no survey.
+    if data.get("survey") is not None:
+        canonical["survey"] = {
+            "slot_public_id": str(data["survey"]["slot_public_id"]),
+            **{
+                field: data["survey"].get(field, "").strip()
+                for field in BOOKING_FIELDS if field.startswith("site_") or field == "needs_description"
+            },
+        }
     return hashlib.sha256(json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def order_survey_key(order):
+    # Separate the booking key from public standalone keys and the customer's checkout key.
+    return uuid.uuid5(order.public_id, "octacam.checkout.survey.v1")
+
+
+def _book_order_survey(*, order, data, user):
+    survey_data = {
+        **data["survey"],
+        **{field: data[field] for field in ("customer_name", "customer_email", "customer_phone")},
+    }
+    try:
+        book_survey(data=survey_data, idempotency_key=order_survey_key(order), user=user, related_order=order)
+    except SurveyBookingConflict as exc:
+        raise CheckoutConflict(exc.code, exc.message) from exc
+    except ValidationError as exc:
+        raise ValidationError({f"survey.{field}": messages for field, messages in exc.detail.items()}) from exc
 
 
 def _existing_order(key, fingerprint):
@@ -220,4 +248,7 @@ def place_order(*, data, idempotency_key, user):
         template_name="order_placed", context={"order_id": order.pk},
         dedupe_key=f"order:{order.public_id}:placed", order=order,
     )
+    if data.get("survey") is not None:
+        # Nested atomic booking joins this transaction. Any failure undoes order, stock, audit, and both emails.
+        _book_order_survey(order=order, data=data, user=user)
     return order, True

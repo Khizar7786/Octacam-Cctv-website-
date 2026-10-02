@@ -4,6 +4,14 @@ Guests and signed-in customers can book a **free Lahore site survey** without
 buying equipment. This confirms a survey; installation is quoted and scheduled
 afterward. Equipment purchased elsewhere is subject to staff review.
 
+Equipment buyers may instead include an optional survey in
+[COD checkout](checkout-api.md#include-a-free-lahore-site-survey). It reuses the
+same booking service, approved-area validation, capacity locks, audit, and
+email outbox, inside the order transaction. Checkout supplies the trusted order
+association and inherits its contact/identity; this standalone endpoint still
+cannot accept an order association. After combined creation the resources have
+independent lifecycles.
+
 ## Approved service-area configuration
 
 Set `SURVEY_LAHORE_SERVICE_AREAS` in the backend environment to a JSON array of

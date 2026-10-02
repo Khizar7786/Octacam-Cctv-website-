@@ -172,7 +172,7 @@ class CheckoutApiTests(TestCase):
         self.assertTrue(order.shipping_taxable)
         self.assertEqual(order.shipping_tax_amount, Decimal("18.75"))
 
-    def test_unavailable_product_and_unsupported_survey_are_rejected(self):
+    def test_unavailable_product_and_invalid_survey_are_rejected(self):
         token = self.quote().data["quote_token"]
         Product.objects.filter(pk=self.product.pk).update(stock_quantity=0)
         changed = self.place(place_data(self.product, token))
@@ -184,9 +184,9 @@ class CheckoutApiTests(TestCase):
 
         payload = place_data(self.product, token)
         payload["survey"] = {"slot_id": 1}
-        unsupported = self.place(payload)
-        self.assertEqual(unsupported.status_code, 400)
-        self.assertIn("survey", unsupported.data["error"]["fields"])
+        invalid = self.place(payload)
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn("survey.slot_id", invalid.data["error"]["fields"])
 
     def test_unpublished_after_quote_needs_review(self):
         token = self.quote().data["quote_token"]

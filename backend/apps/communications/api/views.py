@@ -9,20 +9,22 @@ from apps.accounts.api.serializers import ApiErrorSerializer
 from apps.communications.models import EmailOutbox
 from apps.communications.services import retry_email
 from apps.core.permissions import IsStaff
+from apps.core.api.staff_response import PRIVATE_STAFF_HEADERS, PrivateStaffResponseMixin
 
 from .serializers import EmailOutboxSerializer
 
 
 class EmailPagination(PageNumberPagination):
-    page_size = settings.CATALOG_PAGE_SIZE
+    page_size = settings.STAFF_ORDER_PAGE_SIZE
 
 
 @extend_schema_view(get=extend_schema(
-    tags=["staff"], parameters=[OpenApiParameter("status", str, enum=EmailOutbox.Status.values)],
+    tags=["staff"], parameters=[OpenApiParameter("status", str, enum=EmailOutbox.Status.values),
+                                 *PRIVATE_STAFF_HEADERS],
     responses={200: EmailOutboxSerializer(many=True), 400: ApiErrorSerializer,
                401: ApiErrorSerializer, 403: ApiErrorSerializer},
 ))
-class StaffEmailList(generics.ListAPIView):
+class StaffEmailList(PrivateStaffResponseMixin, generics.ListAPIView):
     permission_classes = [IsStaff]
     serializer_class = EmailOutboxSerializer
     pagination_class = EmailPagination
@@ -36,11 +38,11 @@ class StaffEmailList(generics.ListAPIView):
         return queryset.filter(status=status) if status else queryset
 
 
-class StaffEmailRetry(APIView):
+class StaffEmailRetry(PrivateStaffResponseMixin, APIView):
     permission_classes = [IsStaff]
 
     @extend_schema(
-        tags=["staff"], request=None,
+        tags=["staff"], request=None, parameters=PRIVATE_STAFF_HEADERS,
         responses={200: EmailOutboxSerializer, 400: ApiErrorSerializer,
                    401: ApiErrorSerializer, 403: ApiErrorSerializer, 404: ApiErrorSerializer},
     )

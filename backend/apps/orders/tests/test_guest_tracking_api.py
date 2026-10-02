@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail, signing
+from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -26,6 +27,7 @@ class GuestOrderTrackingApiTests(TestCase):
         cls.product = make_product(stock=3)
 
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
 
     def place_order(self, *, key=None):

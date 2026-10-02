@@ -15,7 +15,7 @@ from .models import SurveyBooking, SurveySlot
 from .services import SurveyConfigurationError
 
 
-INSTALLATION_NOTICE = "This confirms a free site survey. Installation is quoted and scheduled afterward."
+INSTALLATION_NOTICE = "This booking is for a free site survey. Installation is quoted and scheduled afterward."
 BOOKING_FIELDS = (
     "customer_name", "customer_email", "customer_phone", "site_address_line1",
     "site_address_line2", "site_area", "site_city", "needs_description",
@@ -49,12 +49,14 @@ def _validate_service_area(data):
         raise ValidationError({"site_area": ["This area is outside the approved Lahore survey coverage. Contact support for help."]})
 
 
-def _request_fingerprint(data, user_id):
+def _request_fingerprint(data, user_id, related_order_id=None):
     canonical = {
         "user_id": user_id, "slot_public_id": str(data["slot_public_id"]),
         **{field: data.get(field, "").strip() for field in BOOKING_FIELDS},
     }
     canonical["customer_email"] = canonical["customer_email"].lower()
+    if related_order_id is not None:
+        canonical["related_order_id"] = related_order_id
     return hashlib.sha256(json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -66,10 +68,10 @@ def _existing_booking(key, fingerprint):
 
 
 @transaction.atomic
-def book_survey(*, data, idempotency_key, user):
-    """Create a standalone booking, audit, and email under the slot capacity lock."""
+def book_survey(*, data, idempotency_key, user, related_order=None):
+    """Create a booking, audit, and email; checkout supplies its order inside the outer transaction."""
     user = user if user and user.is_authenticated else None
-    fingerprint = _request_fingerprint(data, user.pk if user else None)
+    fingerprint = _request_fingerprint(data, user.pk if user else None, related_order.pk if related_order else None)
     existing = _existing_booking(idempotency_key, fingerprint)
     if existing:
         return existing, False
@@ -92,7 +94,7 @@ def book_survey(*, data, idempotency_key, user):
             booking = SurveyBooking.objects.create(
                 public_id=public_id, reference=f"OCS-{public_id.hex[:16].upper()}",
                 slot=slot, scheduled_starts_at=slot.starts_at, scheduled_ends_at=slot.ends_at,
-                user=user, related_order=None,
+                user=user, related_order=related_order,
                 **{field: data.get(field, "").strip() for field in BOOKING_FIELDS if field != "customer_email"},
                 customer_email=data["customer_email"].strip().lower(),
                 idempotency_key=idempotency_key, request_fingerprint=fingerprint,
@@ -105,7 +107,8 @@ def book_survey(*, data, idempotency_key, user):
     record_audit_event(
         actor=user, resource_type="SurveyBooking", resource_id=booking.pk,
         action="SURVEY_BOOKING_CONFIRMED", before_data={}, after_data={"status": booking.status},
-        metadata={"slot_public_id": str(slot.public_id)},
+        metadata={"slot_public_id": str(slot.public_id),
+                  **({"related_order_public_id": str(related_order.public_id)} if related_order else {})},
     )
     enqueue_email(
         event_type=EmailOutbox.EventType.SURVEY_CONFIRMED,

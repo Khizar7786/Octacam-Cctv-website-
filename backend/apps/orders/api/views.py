@@ -22,6 +22,7 @@ from apps.orders.pricing import CheckoutConfigurationError
 from apps.orders.selectors import get_customer_orders, get_order_audit_history, get_staff_orders
 from apps.orders.services import CheckoutConflict, create_quote, place_order
 from apps.orders.tracking import get_order_for_guest_token
+from apps.surveys.services import SurveyConfigurationError
 
 from .serializers import (
     CheckoutConflictSerializer, GuestOrderTrackingSerializer, OrderReceiptSerializer,
@@ -108,6 +109,7 @@ class CheckoutPlaceView(PrivateOrderResponseMixin, APIView):
 
     @extend_schema(
         tags=["checkout"], request=PlaceOrderRequestSerializer,
+        description="Place a COD equipment order with an optional free Lahore site survey. Initial creation is atomic; each resource then has an independent lifecycle. Retain the same key, body, and identity after an uncertain response.",
         parameters=[CSRF_HEADER, IDEMPOTENCY_HEADER, *PRIVATE_ORDER_RESPONSE_HEADERS],
         responses={201: OrderReceiptSerializer, 200: OrderReceiptSerializer, 400: ApiErrorSerializer,
                    403: ApiErrorSerializer, 409: CheckoutConflictSerializer,
@@ -126,6 +128,10 @@ class CheckoutPlaceView(PrivateOrderResponseMixin, APIView):
             return conflict_response(exc)
         except CheckoutConfigurationError:
             return configuration_response()
+        except SurveyConfigurationError as exc:
+            return Response({"error": {
+                "code": "SURVEY_NOT_CONFIGURED", "message": str(exc), "fields": {},
+            }}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response(OrderReceiptSerializer(order).data, status=201 if created else 200)
 
 
