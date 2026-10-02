@@ -3,7 +3,7 @@
 **Status:** Final MVP architecture  
 **Project:** OctaCam CCTV E-commerce Platform  
 **Market:** Pakistan  
-**Primary stack:** React + React Router Framework Mode, Django + Django REST Framework, PostgreSQL, REST, JWT  
+**Primary stack:** React + React Router Framework Mode + TypeScript, Django + Django REST Framework, PostgreSQL, REST, JWT\
 **Companion documents:** `product-spec.md`, `ux-spec.md`, `agents.md`, `README.md`
 
 ---
@@ -198,7 +198,11 @@ Frontend:
 
 - React
 - React Router Framework Mode
-- TypeScript
+- TypeScript: `.ts` for non-JSX modules and `.tsx` for React routes/components
+- Tailwind CSS with centralized design tokens
+- shadcn/ui in TypeScript mode, customized to OctaCam's design
+- Motion for React only for restrained homepage entrance and selected scroll animations
+- CSS for simple hover/focus transitions
 - SSR for public dynamic catalog pages
 - pre-rendering for suitable static content
 - REST communication with Django
@@ -208,6 +212,23 @@ Exact package versions should be pinned in the project lockfile when implementat
 A large global state library is **not** required initially.
 
 Redux must not be introduced unless a later implementation requirement clearly justifies it.
+
+### Styling and motion conventions
+
+Keep shared color, typography, spacing, radius, shadow, and motion tokens in `app/styles/tokens.css`, loaded by `app/styles/app.css`. Tailwind utilities and shadcn/ui component variables must use that shared source rather than duplicate design values. Derive brand colors from the approved logo and verify contrast before fixing token values; no hexadecimal brand values are approved by this decision.
+
+Configure shadcn/ui for TypeScript output and keep reusable UI source in `app/components/ui/`. Customize it through the shared tokens and component styles to match OctaCam, preserving semantic HTML, keyboard behavior, and visible focus. The copied components are project-owned code that must be reviewed and maintained.
+
+Motion is optional visual polish within the stated scope. Essential homepage content, navigation, promotional copy, and calls to action must be visible in the initial server-rendered output and before hydration; never hide them until an entrance animation or scroll trigger runs. Respect reduced-motion preferences in both Motion and CSS by removing nonessential movement. Promotional banners remain static content with manual controls, one visible at a time and no auto-advance. Use CSS for simple hover/focus transitions, keeping focus and state feedback immediate.
+
+### Reasons and trade-offs
+
+| Decision | Reason and trade-off |
+| --- | --- |
+| Keep React, React Router Framework Mode, TypeScript and TSX | Preserves the existing SSR/loaders and typed routes/components. Typechecking adds a verification step and does not replace runtime API validation. |
+| Tailwind CSS with centralized tokens | Keeps responsive styling and shared design values consistent. Utility classes can become verbose, so repeated UI belongs in reusable components. |
+| Customized shadcn/ui in TypeScript mode | Provides reusable UI source that the owner can inspect and adapt. Local customization means the project owns accessibility checks, maintenance, and upstream update review. |
+| Restrained Motion for React; CSS for simple transitions | Adds limited homepage polish while CSS handles small interactions. Motion adds JavaScript and motion-accessibility checks, so limit imports to routes that need it and never make content visibility depend on animation. |
 
 ---
 
@@ -266,9 +287,12 @@ frontend/
 |   |
 |   |-- components/
 |   |   |-- ui/
+|   |   |   |-- button.tsx
+|   |   |   `-- input.tsx
 |   |   `-- layout/
 |   |
 |   |-- lib/
+|   |   |-- utils.ts
 |   |   |-- api/
 |   |   |   |-- browser-client.ts
 |   |   |   `-- server-client.ts
@@ -281,10 +305,14 @@ frontend/
 |   |   `-- policies/
 |   |
 |   `-- styles/
+|       |-- app.css
+|       `-- tokens.css
 |
 |-- public/
 |-- tests/
+|-- components.json
 |-- react-router.config.ts
+|-- tsconfig.json
 `-- package.json
 ```
 
@@ -292,7 +320,7 @@ Route files own route-level responsibilities.
 
 Reusable domain behavior belongs under `features/`.
 
-Reusable generic UI belongs under `components/`.
+Reusable generic UI belongs under `components/`, including customized shadcn/ui TypeScript components under `components/ui/`. `components.json` records the shadcn/ui configuration in TypeScript mode; `tsconfig.json` configures frontend typechecking. This tree is an implementation example, not a claim that the frontend already exists.
 
 Do not place major business logic directly inside route components.
 
@@ -3127,7 +3155,7 @@ Initial expectations:
 - SSR only what benefits public discoverability,
 - use CDN caching for static assets/media,
 - index real database query patterns,
-- avoid large frontend bundles through route-level code splitting.
+- avoid large frontend bundles through route-level code splitting, including loading Motion only in routes that use the approved animations.
 
 Do not introduce Redis caching initially.
 
@@ -3350,6 +3378,8 @@ test
 production build
 ```
 
+Frontend setup must provide these checks and document the actual commands in `README.md`. Typechecking must cover `.ts` and `.tsx` application files, customized UI components, and React Router route types. A successful production build does not replace typechecking.
+
 ### Backend
 
 ```text
@@ -3466,7 +3496,11 @@ Cover:
 - checkout changed-state UI,
 - slot-unavailable recovery,
 - route permission UX,
+- reduced-motion behavior for Motion and CSS transitions,
+- essential homepage content visible before hydration and without animation, with promotional banners advancing only through manual controls,
 - critical customer flows.
+
+When styling or shared components change, also verify token consistency, contrast, keyboard/focus behavior, and narrow-phone, tablet, and desktop layouts. Exercise normal and reduced-motion settings when animations change.
 
 ## 86.5 End-to-end/smoke flows
 
@@ -3616,12 +3650,13 @@ Suggested sequence:
 ### Slice 0 - project foundation
 
 - monorepo structure,
-- React Router application,
+- React Router Framework Mode application using TypeScript/TSX and the existing rendering strategy,
+- Tailwind token foundation and customized shadcn/ui TypeScript components,
 - Django/DRF application,
 - PostgreSQL,
 - environment configuration,
 - OpenAPI,
-- base CI.
+- base CI, including frontend typechecking.
 
 Suggested commit:
 
@@ -3809,6 +3844,8 @@ The architecture implementation is considered consistent with this document when
 OctaCam is a **React + Django REST Framework modular-monolith e-commerce application**.
 
 React Router Framework Mode provides the customer storefront, customer account, and staff dashboard. Public catalog pages are rendered server-side for search visibility, while private application areas are client-heavy.
+
+The frontend stays in TypeScript/TSX, using Tailwind CSS with centralized tokens and customized shadcn/ui components in TypeScript mode. Motion for React is limited to restrained homepage entrance and selected scroll animations; CSS handles simple hover/focus transitions. Both respect reduced motion, essential content is immediately visible, and promotional banners remain manually controlled without auto-advance. Frontend verification includes typechecking.
 
 Django/DRF exposes a versioned REST API and contains all authoritative commerce rules. PostgreSQL stores catalog, inventory, order, survey, audit, and email-outbox data.
 

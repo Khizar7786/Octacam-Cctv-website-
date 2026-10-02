@@ -3,7 +3,7 @@
 **Status:** Final design specification for the MVP, subject to the business inputs listed in §14  
 **Companion source of truth:** `product-spec.md` (the attached OctaCam Product Specification)  
 **Market and language:** Pakistan; English storefront; PKR  
-**Last updated:** 1 October 2026
+**Last updated:** 2 October 2026
 
 ## 1. Purpose and scope
 
@@ -25,6 +25,7 @@ Primary journeys: a household or small-business buyer browsing by product type; 
 
 - **Final logo reference:** the first blue-and-black image from the selected OctaCam logo set, `image-gen-1(4).png`: interlocking black **O** and electric-blue **C**, with the “Octa” black / “Cam” blue wordmark. Preserve its proportions, clear space, and letterforms. Create a clean transparent export and appropriate light/dark variants from the approved master before production use; do not stretch, recolor, or use the white-background image as though it were transparent.
 - **Palette application:** white or very light neutral shopping surfaces; near-black body text and headers; logo blue for primary links, focused elements, and key calls to action. Muted greys separate information. Green or amber may communicate genuine success or caution, with accessible text labels; never make status depend on color alone. Sample interface colors from the final export and check contrast before fixing design tokens. This spec does not assert unapproved hexadecimal brand values.
+- **Shared styling:** use the centralized design tokens defined in `architecture.md` for colors, typography, spacing, radii, shadows, and motion. Tailwind CSS and reusable shadcn/ui components share those tokens; customize components to OctaCam's visual system while retaining accessible semantics and interaction behavior.
 - **Typography:** a clean, legible sans-serif with clear heading hierarchy and readable numbers/model codes. Use a distinct treatment for SKU and technical units, without making long model numbers wrap unpredictably. Keep paragraph widths comfortable and avoid all-caps body text.
 - **Visual tone:** modern electronics store, restrained spacing and borders, real product photos, no unverified security promises. White space should help scanning, while product lists can be dense enough for professional shoppers.
 - **Imagery:** use factual product photography with descriptive alternative text. Do not embed essential promo copy only in an image; live headline and button text stay readable when images fail or crop.
@@ -64,6 +65,8 @@ Recommended order on desktop and mobile:
 7. Factual store reassurance (COD, applicable warranty details, delivery policy, support) and footer.
 
 **MVP banner behavior:** banners are configured as static launch content and changed through a code/content deployment. A developer can provide multiple approved banners with desktop and mobile images, live headline, accessible button label, destination, and display order. Show **one at a time**; controls are previous/next buttons and an indicator that names the current slide. The initial banner never waits for interaction to appear. Slides **do not auto-advance**. If there is only one, omit carousel controls. Every banner destination must be valid; no expired sale copy should stay live. Provide a readable fallback when an image fails.
+
+**Motion behavior:** Motion for React is only for restrained homepage entrance and selected scroll animations. Essential content, navigation, banner copy, and shopping/survey links remain immediately visible in the server-rendered page, before hydration and without animations; do not hide them pending an entrance or scroll trigger. Remove nonessential movement when reduced motion is requested. Animation must not delay interaction, shift focus, or change banner selection automatically. Simple hover/focus transitions use CSS, with immediate visible focus and state feedback.
 
 **Decision record:** the earlier concept allowed staff to upload, schedule, reorder, and disable banners in a dashboard. The final selection for launch is **static banners**, so those staff controls and automatic scheduling are deferred. The product spec excludes a general-purpose CMS and timed promotion rules. If staff-controlled banners become a requirement, update both specs before building them. Static promotions must not imply coupon or timed-pricing features.
 
@@ -187,7 +190,7 @@ still quoted and scheduled offline afterward.
 
 - Design mobile-first for narrow phones, then tablet and desktop widths. Validate actual small-phone, tablet, and wide-desktop layouts; avoid fixed width product tables and horizontal page scrolling. Product specs may use stacked name/value rows on mobile.
 - Buttons and links have visible text or accessible names, useful focus order, visible focus styling, adequate touch targets and color contrast. Menus, dialogs, filters, image galleries, and carousel controls work with keyboard and assistive technology. Do not move focus unexpectedly when a filter changes.
-- Form errors identify the field and correction; announce significant cart, stock, slot, and order-status changes in text. Never use color alone for availability, errors, or status. Provide skip navigation and meaningful page headings. Respect reduced-motion preferences; banners never move on their own.
+- Form errors identify the field and correction; announce significant cart, stock, slot, and order-status changes in text. Never use color alone for availability, errors, or status. Provide skip navigation and meaningful page headings. Respect reduced-motion preferences in Motion and CSS; essential content never waits for animation, and banners never move on their own.
 - Keep image sizes and loading behavior appropriate to mobile connections. Prioritize the visible hero and primary product image; prevent layout jumps with reserved image space. Do not let a failed image, network request, or email block a successful order/booking confirmation.
 - Public brand, category, product, and help pages use descriptive headings, stable URLs, informative titles/descriptions, and useful text content for search discovery. Details of rendering and indexing belong in `architecture.md`.
 - All shipping fees, tax amounts, warranty periods, delivery estimates, service boundaries, and business claims must come from approved business inputs. User-facing copy distinguishes a free **site survey** from a paid, separately quoted installation.
@@ -205,6 +208,9 @@ Every data-driven page needs a purposeful loading, empty, error, and success sta
 7. Staff can publish/unpublish a product, update stock/price, process and track an order, and manage survey slots/bookings with clear save feedback and recorded changes.
 8. At phone and desktop sizes, navigation, banners, filters, checkout, booking, and status pages are keyboard usable and readable; promotional controls do not advance automatically.
 9. The MVP never exposes a kit builder, online payment, self-service cancellation/returns, installation booking, or staff banner editor.
+10. With normal or reduced-motion settings, and before hydration or without animations, essential homepage content and the initial banner remain visible. Hover/focus feedback is clear; scrolling or elapsed time never advances promotional banners.
+
+Frontend implementation verification includes lint, TypeScript typechecking for `.ts`/`.tsx` files, relevant tests, and a production build using the repository's actual commands. Review shared-token styling and customized UI components for contrast, keyboard/focus behavior, and phone, tablet, and desktop layouts, as well as the motion checks above. A build alone is not a typecheck.
 
 ## 14. Approved decisions and pre-launch inputs
 
@@ -212,4 +218,4 @@ Every data-driven page needs a purposeful loading, empty, error, and success sta
 
 **Business inputs required before real orders or bookings:** approved tax rules and rates; flat shipping amount and courier coverage/estimates; exact Lahore service boundary and staff slot lengths; verified WhatsApp/phone/email and business identity; approved returns/warranty/cancellation/privacy/terms text; accurate product photos/specifications/stock/prices; production email and support handling. Until supplied, designs and staging content should use explicit placeholders rather than invented values.
 
-**Implementation handoff:** establish brand color tokens from the approved logo master; create responsive page designs for the routes above; confirm the architecture for search discoverability and guest-link privacy; implement and review the flows in small increments. If a decision changes the product behavior (especially banner administration, kits, payment methods, or installation scheduling), update `product-spec.md` and this document together.
+**Implementation handoff:** retain React, React Router Framework Mode, TypeScript/TSX, and the existing server-rendering strategy in `architecture.md`; establish centralized design tokens from the approved logo master for Tailwind CSS and customized shadcn/ui components in TypeScript mode; create responsive page designs with the restrained motion rules above; confirm guest-link privacy; implement and review the flows in small increments, including frontend typechecking. Reasons and trade-offs for these frontend choices are recorded in architecture section 6.1. If a decision changes the product behavior (especially banner administration, kits, payment methods, or installation scheduling), update `product-spec.md` and this document together.

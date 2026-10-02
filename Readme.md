@@ -2,6 +2,12 @@
 
 OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication and password reset APIs, customer profile editing and order history, catalog taxonomy, typed product specifications, staff product image management, publication controls, staff stock adjustments, public product APIs, equipment-only COD checkout, staff order processing, staff survey slot management, public survey availability, standalone survey booking and private guest status, and a transactional email outbox worker. The storefront UI and combined order/survey checkout have not been built yet.
 
+## Frontend decisions
+
+The planned frontend keeps React, React Router Framework Mode, TypeScript/TSX, and the existing SSR/pre-rendering strategy. Use Tailwind CSS with centralized design tokens and shadcn/ui in TypeScript mode, customized to OctaCam. Motion for React is only for restrained homepage entrance and selected scroll animations; simple hover/focus transitions use CSS. Respect reduced motion, keep essential content immediately visible, and preserve manual promotional banners without auto-advance. See [architecture section 6.1](Docs/architecture.md#61-technology) for reasons and trade-offs and [the UX specification](Docs/ux-spec.md) for interaction requirements.
+
+Frontend setup must document actual lint, typecheck, test, and production-build commands here, including typechecking for `.ts`/`.tsx` application files and route types. There is no frontend package or runnable frontend verification command yet.
+
 ## Run the backend locally
 
 Requirements: Python 3.12, Docker with a running engine, and Docker Compose. From the repository root:
