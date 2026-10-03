@@ -1,14 +1,56 @@
 # OctaCam
 
-OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, Django backend foundation, account authentication and password reset APIs, customer profile editing and order history, catalog taxonomy, typed product specifications, staff product image management, publication controls, staff stock adjustments, public product APIs, COD checkout with optional survey booking, staff order processing, staff survey slot and booking management, public survey availability, standalone survey booking and private guest status, and a transactional email outbox worker. The storefront UI has not been built yet.
+OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, a minimal SSR frontend foundation, Django backend foundation, account authentication and password reset APIs, customer profile editing and order history, catalog taxonomy, typed product specifications, staff product image management, publication controls, staff stock adjustments, public product APIs, COD checkout with optional survey booking, staff order processing, staff survey slot and booking management, public survey availability, standalone survey booking and private guest status, and a transactional email outbox worker. The storefront UI has not been built yet.
 
 ## Frontend decisions
 
-The agreed frontend uses React, React Router Framework Mode, and TypeScript: `.ts` for non-JSX modules and `.tsx` for routes/components. Preserve the specified runtime SSR for dynamic public pages and pre-rendering for suitable static content; no rendering runtime exists yet. Use Tailwind CSS with centralized design tokens in `frontend/app/styles/tokens.css`, loaded by `app/styles/app.css`, and shadcn/ui in TypeScript mode under `app/components/ui/`, customized through the same tokens. Motion for React is only for restrained homepage entrance and selected scroll animations; simple hover/focus transitions use CSS. Respect reduced motion in both, keep essential content visible in initial SSR output before hydration, and preserve manual promotional banners without auto-advance. See [architecture section 6.1](Docs/architecture.md#61-technology) for reasons, ownership, and trade-offs and [the UX specification](Docs/ux-spec.md) for interaction requirements. These paths describe the planned foundation, not existing files.
+The frontend uses React, React Router Framework Mode, and TypeScript: `.ts` for non-JSX modules and `.tsx` for routes/components. SSR is enabled in `frontend/react-router.config.ts`; suitable static content may be pre-rendered in later slices. Tailwind CSS uses centralized neutral foundation tokens in `frontend/app/styles/tokens.css`, loaded by `app/styles/app.css`. Brand tokens and customized shadcn/ui TypeScript components under `app/components/ui/` remain for a later UI slice after approved-master review. Motion for React is only for restrained homepage entrance and selected scroll animations; simple hover/focus transitions use CSS. Respect reduced motion in both, keep essential content visible in initial SSR output before hydration, and preserve manual promotional banners without auto-advance. No animation or Motion dependency is needed for this scaffold. See [architecture section 6.1](Docs/architecture.md#61-technology) for reasons, ownership, and trade-offs and [the UX specification](Docs/ux-spec.md) for interaction requirements.
 
-Frontend setup must document actual lint, typecheck, test, and production-build commands here, including typechecking for `.ts`/`.tsx` application files and route types. There is no frontend package or runnable frontend verification command yet.
+The frontend commands below cover lint, independent typechecking of `.ts`/`.tsx` files and generated route types, focused tests, and production build. Generated files, dependencies, and build output are ignored by Git.
 
 See the [frontend readiness review](Docs/frontend-readiness.md) for the 2 October 2026 repository inventory, verified OpenAPI coverage, integration gaps, and checks performed. Guest survey screen behavior and acceptance checks are in [UX section 10.1](Docs/ux-spec.md#101-private-guest-survey-status). Current guest receipt/email URLs lead to JSON tracking APIs; their handoff to customer-facing pages remains a separate integration task.
+
+## Run the frontend locally
+
+Use Node **22.15.0+ on the 22.x line, or Node 24+**, and npm. This workspace was verified with Node 22.15.0 and npm 10.9.2. Dependency versions are pinned in `frontend/package-lock.json`. React Router 7 and Vite 7 support this existing Node installation; the current Router 8 release requires newer Node and is not needed for this slice.
+
+From the repository root:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173/` and `http://127.0.0.1:5173/foundation`. The development server uses loopback and a fixed port, so it reports an error rather than silently moving ports. The home page is an in-development placeholder; `/foundation` is a temporary technical check with server-loader content. Reload that nested URL directly to verify SSR. An unknown URL such as `/missing/nested/page` returns HTTP 404 with a readable recovery link. All foundation pages are `noindex` and `no-store`; revisit that global scaffold policy when implementing indexable public storefront pages.
+
+No backend is needed for these pages. This slice adds no API client, proxy, mock catalog, auth, cart, checkout, booking, or staff UI. Browser calls must still use same-origin `/api/v1/` paths when those integrations are implemented; production reverse routing remains a separate deployment task.
+
+From `frontend/`, run:
+
+```powershell
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:production
+```
+
+`typecheck` runs React Router type generation before `tsc --noEmit`, covering application `.ts`/`.tsx`, tests, configuration, and generated route types. `lint` uses ESLint with the recommended TypeScript rules and fails on warnings. Its tool configuration is `eslint.config.mjs`; application modules remain TypeScript. A build is not a substitute for typechecking.
+
+Tests use **Node's built-in test runner** and assertions, so no testing dependency was introduced. Node's `--experimental-strip-types` flag runs the `.ts` tests on the existing Node 22.15 installation; type correctness is checked separately by `typecheck`. On this version Node prints an experimental-feature notice. `npm test` checks error-message privacy and recovery. After building, `test:production` automatically starts the official production server on a temporary loopback port, checks direct/repeated nested document loads, 404 status and recovery, CSS/JavaScript delivery, and a test-only injected loader failure, then stops its server. It does not ship an error-demo endpoint. React Router 7 also prints advisory notices about future Router 8 flags during development/build; this scaffold retains current behavior.
+
+To run the built production server manually:
+
+```powershell
+$env:HOST = "127.0.0.1"
+$env:PORT = "3000"
+npm start
+```
+
+Open `http://127.0.0.1:3000/foundation` directly, reload it, and check an unknown nested URL. Stop with Ctrl+C, then remove those terminal overrides with `Remove-Item Env:HOST, Env:PORT`. The official server starts from `build/server/index.js` and serves the built client assets. These commands verify a local production build, not deployment readiness for live sales.
+
+For browser review, check the placeholder/error pages at narrow phone, tablet, and desktop widths, tab through the skip link and navigation, and activate **Skip to content** and **Return home**. Content must remain readable with JavaScript disabled; there are no animations or transitions to wait for. HTTP verification passed in this slice; browser hydration, actual layouts, and keyboard use could not be verified because no browser was connected. No backend or production infrastructure checks were run for this frontend-only change.
 
 ## Run the backend locally
 

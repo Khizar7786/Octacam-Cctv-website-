@@ -207,7 +207,7 @@ Frontend:
 - pre-rendering for suitable static content
 - REST communication with Django
 
-Exact package versions should be pinned in the project lockfile when implementation begins. These are agreed requirements: `frontend/` is currently empty, with no package, routes, rendering runtime, token stylesheet, or UI components. See the [frontend readiness review](frontend-readiness.md) for the dated implementation inventory and contract gaps; this architecture remains the intended design.
+Exact package versions are pinned in `frontend/package-lock.json`. The frontend foundation now includes React Router Framework Mode with `ssr: true`, TypeScript route generation/checking, Tailwind with neutral shared tokens, placeholder routes, a root error boundary, and lint/test/build/start commands. Storefront features, brand tokens, customized shadcn/ui components, and approved animations remain later slices. See the [frontend readiness review](frontend-readiness.md) for the dated inventory and contract gaps and [README frontend setup](../Readme.md#run-the-frontend-locally) for current commands.
 
 A large global state library is **not** required initially.
 
@@ -320,7 +320,13 @@ Route files own route-level responsibilities.
 
 Reusable domain behavior belongs under `features/`.
 
-Reusable generic UI belongs under `components/`, including customized shadcn/ui TypeScript components under `components/ui/`. `components.json` records the shadcn/ui configuration in TypeScript mode; `tsconfig.json` configures frontend typechecking. This tree is an implementation example, not a claim that the frontend already exists.
+Reusable generic UI belongs under `components/`, including customized shadcn/ui TypeScript components under `components/ui/`. `components.json` records the shadcn/ui configuration in TypeScript mode; `tsconfig.json` configures frontend typechecking. This tree is an implementation example, not an inventory of shipped files.
+
+The current foundation implements only `app/root.tsx`, `app/routes.ts`, minimal
+routes, `app/lib/route-errors.ts`, `app/styles/`, `public/`, tests, and build/tool
+configuration. Add domain and UI folders as their slices need them; do not
+generate unimplemented storefront or staff routes. React Router's default
+client/server entries handle hydration and streaming SSR for this slice.
 
 Do not place major business logic directly inside route components.
 
@@ -3441,6 +3447,15 @@ production build
 ```
 
 Frontend setup must provide these checks and document the actual commands in `README.md`. Typechecking must cover `.ts` and `.tsx` application files, customized UI components, and React Router route types. A successful production build does not replace typechecking.
+
+The foundation uses ESLint plus `typescript-eslint` for lint, React Router
+typegen plus TypeScript for typecheck, and Node's built-in test runner/assertions
+for focused tests. No testing library is needed for current error-policy and
+production HTTP checks. TypeScript tests run with Node's type-stripping flag;
+that runner does not replace `tsc`. The extra production smoke command builds
+no features: after `npm run build`, it starts the official server, exercises
+SSR/404/assets and a test-only loader failure, then shuts down. A later DOM or
+browser testing dependency must be justified by the behavior being tested.
 
 ### Backend
 

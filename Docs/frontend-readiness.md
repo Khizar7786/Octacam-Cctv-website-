@@ -6,6 +6,21 @@
 
 **Evidence:** `agents.md`, `Readme.md`, the product/UX/architecture specifications, actual Django URL configurations, views, serializers, selectors, services, existing tests, and freshly generated OpenAPI.
 
+**Foundation update, 3 October 2026:** the inventory below preserves the review
+as of 2 October. The requested frontend foundation has since been implemented:
+React Router/TypeScript with SSR enabled, minimal home and `/foundation` routes,
+root error handling and real 404s, Tailwind with neutral tokens, a pinned npm
+lockfile, and documented dev/lint/typecheck/test/build/start commands. It adds
+no storefront features or API integration. Brand/shadcn/Motion work and the
+backend contract gaps below remain separate slices. See [current setup](../Readme.md#run-the-frontend-locally).
+
+Foundation verification passed: lint, typecheck, two focused error tests,
+production build, four production smoke tests (including SSR/404/assets and
+test-only loader failure), and direct/repeated development-server requests.
+The documented `npm start` entry point was also checked over HTTP. A browser
+was not connected, so hydration/layout/keyboard checks remain manual; no backend
+tests were repeated. This update does not change the earlier backend test result.
+
 ## Actual repository state
 
 | Requirement | What exists | Remaining work |

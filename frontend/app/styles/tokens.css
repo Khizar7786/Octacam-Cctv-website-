@@ -1,0 +1,7 @@
+:root {
+  /* Neutral foundation values; brand colors await approved-master review. */
+  --background: #ffffff;
+  --foreground: #171717;
+  --focus-ring: #171717;
+  --font-body: system-ui, sans-serif;
+}

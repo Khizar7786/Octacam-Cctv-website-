@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  a {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 4px;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--background);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
