@@ -6,6 +6,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigation,
 } from "react-router";
 import type { Route } from "./+types/root";
 import { getRouteErrorContent } from "./lib/route-errors";
@@ -45,7 +46,14 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const navigation = useNavigation();
+
+  return (
+    <>
+      {navigation.state === "loading" ? <p className="mb-5" role="status">Loading page...</p> : null}
+      <Outlet />
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

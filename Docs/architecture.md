@@ -322,11 +322,12 @@ Reusable domain behavior belongs under `features/`.
 
 Reusable generic UI belongs under `components/`, including customized shadcn/ui TypeScript components under `components/ui/`. `components.json` records the shadcn/ui configuration in TypeScript mode; `tsconfig.json` configures frontend typechecking. This tree is an implementation example, not an inventory of shipped files.
 
-The current foundation implements only `app/root.tsx`, `app/routes.ts`, minimal
-routes, `app/lib/route-errors.ts`, `app/styles/`, `public/`, tests, and build/tool
-configuration. Add domain and UI folders as their slices need them; do not
-generate unimplemented storefront or staff routes. React Router's default
-client/server entries handle hydration and streaming SSR for this slice.
+The current foundation implements `app/root.tsx`, `app/routes.ts`, minimal
+routes, `app/lib/route-errors.ts`, `app/lib/api/`, the public catalog response
+contract under `app/features/catalog/`, `app/styles/`, `public/`, tests, and
+build/tool configuration. Add other domain and UI folders as their slices need
+them; do not generate unimplemented storefront or staff routes. React Router's
+default client/server entries handle hydration and streaming SSR.
 
 Do not place major business logic directly inside route components.
 
@@ -464,6 +465,21 @@ http://backend-internal:8000/api/v1/...
 when the deployment platform provides internal/private service networking.
 
 Public browser traffic should still use `/api/v1/...`.
+
+The shared public API foundation implements these boundaries without adding
+authenticated-session behavior. Browser modules accept only same-origin
+`/api/v1/` paths. Server-only modules prepend the non-`VITE_`
+`OCTACAM_API_ORIGIN` value, which is an HTTP(S) origin, defaults locally to
+`http://127.0.0.1:8000`, and is required in production. Vite proxies `/api/v1`
+to that origin in development; production provides the same route at the edge
+as described in section 80.
+
+The shared transport passes `AbortSignal` through, normalizes the handled API
+error envelope, and gives non-JSON/proxy failures a safe fallback code. Catalog
+response parsing keeps monetary decimals as strings. DRF pagination links are
+normalized from an internal absolute URL to a same-origin `/api/v1/...` path
+before loader data is serialized. Authentication headers, refresh coordination,
+and CSRF behavior remain for the authentication slice.
 
 ---
 

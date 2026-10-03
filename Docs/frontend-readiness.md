@@ -10,18 +10,23 @@
 as of 2 October. The requested frontend foundation has since been implemented:
 React Router/TypeScript with SSR enabled, minimal home and `/foundation` routes,
 root error handling and real 404s, Tailwind with neutral tokens, a pinned npm
-lockfile, and documented dev/lint/typecheck/test/build/start commands. It adds
-no storefront features or API integration. Brand/shadcn/Motion work and the
-backend contract gaps below remain separate slices. See [current setup](../Readme.md#run-the-frontend-locally).
+lockfile, and documented dev/lint/typecheck/test/build/start commands. The
+shared public API foundation now separates browser and server requests,
+normalizes API errors and pagination, preserves decimal strings, supports
+cancellation, and provides the local `/api/v1/` proxy. It adds no storefront or
+authenticated-session feature. Brand/shadcn/Motion work and the backend
+contract gaps below remain separate slices. See [current setup](../Readme.md#run-the-frontend-locally).
 
-Foundation verification passed: lint, typecheck, two focused error tests,
-production build, four production smoke tests (including SSR/404/assets and
-test-only loader failure), and direct/repeated development-server requests.
-The documented `npm start` entry point was also checked over HTTP. A browser
-was not connected, so hydration/layout/keyboard checks remain manual; no backend
-tests were repeated. This update does not change the earlier backend test result.
+Current frontend verification passed: lint, typecheck, 13 focused unit tests,
+production build, and six production smoke tests covering SSR, compiled-client
+navigation, server-config isolation, 404s, assets, and a test-only loader
+failure. Three live integration checks exercised the running Django catalog
+through the development proxy, direct SSR, and Django's validation-error
+envelope. A browser surface was not available, so the visual
+Home-to-Foundation navigation remains a manual check; no backend test suite was
+repeated. This update does not change the earlier backend test result.
 
-## Actual repository state
+## Repository snapshot reviewed on 2 October 2026
 
 | Requirement | What exists | Remaining work |
 | --- | --- | --- |
@@ -56,7 +61,7 @@ All application routes below are under `/api/v1/`. The backend publishes schema 
 
 The shared handled-error envelope is `error.code`, `error.message`, and field-associated `error.fields`; checkout conflicts additionally include `current_quote`. Frontend decisions must use stable codes. Unexpected server/proxy errors may not be JSON and still need a recoverable UI. Decimal monetary values must be displayed from Django responses, never recomputed as trusted browser totals.
 
-## Blockers and smallest follow-up tasks
+## Blockers identified in the 2 October review
 
 These gaps affect particular later slices, not the whole frontend foundation. No new endpoint or backend implementation is introduced by this review.
 

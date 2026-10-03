@@ -1,6 +1,6 @@
 # OctaCam
 
-OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, a minimal SSR frontend foundation, Django backend foundation, account authentication and password reset APIs, customer profile editing and order history, catalog taxonomy, typed product specifications, staff product image management, publication controls, staff stock adjustments, public product APIs, COD checkout with optional survey booking, staff order processing, staff survey slot and booking management, public survey availability, standalone survey booking and private guest status, and a transactional email outbox worker. The storefront UI has not been built yet.
+OctaCam is a Pakistani CCTV store in development. This repository currently contains the specifications, an SSR frontend foundation with a shared public API client, Django backend foundation, account authentication and password reset APIs, customer profile editing and order history, catalog taxonomy, typed product specifications, staff product image management, publication controls, staff stock adjustments, public product APIs, COD checkout with optional survey booking, staff order processing, staff survey slot and booking management, public survey availability, standalone survey booking and private guest status, and a transactional email outbox worker. The storefront UI has not been built yet.
 
 ## Frontend decisions
 
@@ -22,9 +22,9 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/` and `http://127.0.0.1:5173/foundation`. The development server uses loopback and a fixed port, so it reports an error rather than silently moving ports. The home page is an in-development placeholder; `/foundation` is a temporary technical check with server-loader content. Reload that nested URL directly to verify SSR. An unknown URL such as `/missing/nested/page` returns HTTP 404 with a readable recovery link. All foundation pages are `noindex` and `no-store`; revisit that global scaffold policy when implementing indexable public storefront pages.
+Run Django on `http://127.0.0.1:8000` before opening `http://127.0.0.1:5173/` and `http://127.0.0.1:5173/foundation`. The development server uses loopback and a fixed port, so it reports an error rather than silently moving ports. The home page is an in-development placeholder; `/foundation` is a temporary technical check that reads the real public product endpoint. Reload that nested URL directly to exercise the server client during SSR. Navigate to it from the home page to exercise the browser client through the local same-origin `/api/v1/` proxy. The current database may truthfully show an empty published catalog. An unknown URL such as `/missing/nested/page` returns HTTP 404 with a readable recovery link. All foundation pages are `noindex` and `no-store`; revisit that global scaffold policy when implementing indexable public storefront pages.
 
-No backend is needed for these pages. This slice adds no API client, proxy, mock catalog, auth, cart, checkout, booking, or staff UI. Browser calls must still use same-origin `/api/v1/` paths when those integrations are implemented; production reverse routing remains a separate deployment task.
+`OCTACAM_API_ORIGIN` configures the server-side Django origin and defaults to `http://127.0.0.1:8000` in local development. It must be an HTTP(S) origin without a path and is required when `NODE_ENV=production`. The variable has no `VITE_` prefix and lives only in server modules and Vite's server configuration, so it is not exposed to browser bundles. Browser requests always use relative `/api/v1/` paths. The Vite proxy is for local development; production still needs the documented edge/reverse route for `/api/v1/` under the public origin. Authentication, token refresh, CSRF handling, cart, checkout, booking, and staff UI remain separate slices.
 
 From `frontend/`, run:
 
@@ -36,21 +36,24 @@ npm run build
 npm run test:production
 ```
 
+With Django and the frontend development server already running, `npm run test:api:live` checks a real public catalog request through the browser proxy and a direct SSR document request.
+
 `typecheck` runs React Router type generation before `tsc --noEmit`, covering application `.ts`/`.tsx`, tests, configuration, and generated route types. `lint` uses ESLint with the recommended TypeScript rules and fails on warnings. Its tool configuration is `eslint.config.mjs`; application modules remain TypeScript. A build is not a substitute for typechecking.
 
-Tests use **Node's built-in test runner** and assertions, so no testing dependency was introduced. Node's `--experimental-strip-types` flag runs the `.ts` tests on the existing Node 22.15 installation; type correctness is checked separately by `typecheck`. On this version Node prints an experimental-feature notice. `npm test` checks error-message privacy and recovery. After building, `test:production` automatically starts the official production server on a temporary loopback port, checks direct/repeated nested document loads, 404 status and recovery, CSS/JavaScript delivery, and a test-only injected loader failure, then stops its server. It does not ship an error-demo endpoint. React Router 7 also prints advisory notices about future Router 8 flags during development/build; this scaffold retains current behavior.
+Tests use **Node's built-in test runner** and assertions, so no testing dependency was introduced. Node's `--experimental-strip-types` flag runs the `.ts` tests on the existing Node 22.15 installation; type correctness is checked separately by `typecheck`. On this version Node prints an experimental-feature notice. `npm test` covers route-error privacy, structured and malformed API errors, server/browser URL boundaries, cancellation, decimal-string preservation, and pagination normalization. After building, `test:production` starts a local catalog stub plus the official production server on temporary loopback ports, checks direct/repeated SSR, compiled client-loader navigation through the same-origin API path, browser-bundle configuration isolation, 404 recovery, CSS/JavaScript delivery, and a test-only injected loader failure, then stops both servers. It does not ship a mock endpoint or error-demo endpoint in the application. React Router 7 also prints advisory notices about future Router 8 flags during development/build; this scaffold retains current behavior.
 
 To run the built production server manually:
 
 ```powershell
 $env:HOST = "127.0.0.1"
 $env:PORT = "3000"
+$env:OCTACAM_API_ORIGIN = "http://127.0.0.1:8000"
 npm start
 ```
 
-Open `http://127.0.0.1:3000/foundation` directly, reload it, and check an unknown nested URL. Stop with Ctrl+C, then remove those terminal overrides with `Remove-Item Env:HOST, Env:PORT`. The official server starts from `build/server/index.js` and serves the built client assets. These commands verify a local production build, not deployment readiness for live sales.
+Open `http://127.0.0.1:3000/foundation` directly, reload it, and check an unknown nested URL. Stop with Ctrl+C, then remove those terminal overrides with `Remove-Item Env:HOST, Env:PORT, Env:OCTACAM_API_ORIGIN`. The official server starts from `build/server/index.js` and serves the built client assets. Browser API navigation on this production server additionally requires the production same-origin reverse route; `react-router-serve` does not proxy Django. These commands verify a local production build, not deployment readiness for live sales.
 
-For browser review, check the placeholder/error pages at narrow phone, tablet, and desktop widths, tab through the skip link and navigation, and activate **Skip to content** and **Return home**. Content must remain readable with JavaScript disabled; there are no animations or transitions to wait for. HTTP verification passed in this slice; browser hydration, actual layouts, and keyboard use could not be verified because no browser was connected. No backend or production infrastructure checks were run for this frontend-only change.
+For browser review, open the home page first and activate **View frontend foundation**. The result should say it used the browser API client; a direct reload should say it used the server API client. In both cases the published count comes from Django. Check the placeholder/error pages at narrow phone, tablet, and desktop widths, tab through the skip link and navigation, and activate **Skip to content** and **Return home**. Content must remain readable with JavaScript disabled; there are no animations or transitions to wait for.
 
 ## Run the backend locally
 
