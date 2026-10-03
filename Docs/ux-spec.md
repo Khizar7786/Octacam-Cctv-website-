@@ -178,6 +178,61 @@ Use stacked content on narrow screens, visible focus, and accessible textual
 status announcements. The tracking API is implemented; the frontend screen
 remains part of the later storefront slice.
 
+**Screen layout and controls:** place the heading and private-link explanation
+before a compact booking summary. Use labelled reference, status, survey time,
+and area/city rows, followed by the installation notice and approved support
+link. Keep the same reading order on phone, tablet, and desktop; long references
+and area labels wrap without horizontal scrolling. Retry and support controls
+work by keyboard and have visible focus. Announce loading, updated status, and
+errors in text without moving focus unexpectedly. A passed scheduled time does
+not mean the survey is completed; display only the server-confirmed state.
+
+| State | Content and recovery |
+| --- | --- |
+| Loading or retrying | Show **Loading site survey status…**; prevent duplicate retries and do not display a speculative booking state. |
+| Confirmed | Show **Confirmed** and the current scheduled start/end. Reopening the link after staff reschedule shows the new confirmed time, without a change-history timeline. |
+| Completed | Show **Completed** and the saved survey time. Explain that any installation is quoted and scheduled separately; offer support, with no installation-booking control. |
+| Cancelled | Show **Cancelled** and **Cancelled survey time** using the retained start/end. No slot picker or rebooking action appears on this status screen; the equipment order remains independent. |
+| Invalid, revoked, wrong-resource, or missing link | Show **This survey link is unavailable. Contact support for help.** and the approved support route. This is the single unavailable state, not an empty booking list; never invite lookup by reference or email. |
+| Temporary network/server failure or rate limit | Explain that status could not be loaded and offer retry/support; honour a server retry delay when supplied. Never claim that a booking was cancelled or that retry creates a booking. |
+
+**Privacy and contract handoff:** the existing read-only API returns `reference`,
+`status`, `slot` (public ID and scheduled start/end), `site_area`, `site_city`,
+and `installation_notice`. The slot ID is not customer-facing content. Use only
+this limited response; never fetch a staff or full creation receipt to fill
+the screen. Invalid-link API failures map to the neutral unavailable message;
+unexpected or incomplete responses use the retryable error state, not a guessed
+success. No valid-link lookup requires sign-in or a new booking submission.
+
+Apply privacy controls to the HTML page and its data/error responses, including
+browser/shared-cache prevention and no-referrer behaviour on support links.
+Do not place the token, booking data, or full private URL in persistent browser
+storage, analytics, error reports, social previews, or a sitemap. Reopening and
+retrying always read current server state; the screen has no automatic refresh
+or animation requirement. Approved support details remain a business input;
+use a clearly flagged placeholder during development until supplied.
+
+Current guest receipt and email links open the JSON API rather than a storefront
+page. The later screen slice must coordinate a customer-page link handoff with
+the backend, preserving signed-token scope and existing API links. This UX
+definition does not introduce a new endpoint or change booking behaviour.
+
+**Acceptance checks for the later screen slice:**
+
+1. A valid standalone or order-linked guest link shows only its own booking's
+   allowed fields, Pakistan time, installation notice, and support path.
+2. Reopening after staff rescheduling, completion, or cancellation shows current
+   server status; cancellation retains the last survey time and changes no order.
+3. A forged, revoked, order-token, or missing link gives the same unavailable
+   message, with no customer or reference-existence disclosure.
+4. Loading, offline/server failure, and retry remain textual and keyboard usable;
+   retries perform a read and never create, cancel, or reschedule a booking.
+5. Success and error pages carry the privacy headers specified in architecture
+   section 34 and remain absent from caches, previews, token-bearing logs,
+   analytics, and sitemaps.
+6. Narrow-phone, tablet, and desktop layouts have no horizontal overflow; focus
+   and announcements work with keyboard use and reduced motion.
+
 ## 11. Staff dashboard UX
 
 Authenticated staff see a simple desktop-first workspace that still functions on a smaller screen. One staff permission level applies. The opening view highlights new orders, orders needing action, and upcoming survey bookings, with direct links to each record; no broad analytics suite.

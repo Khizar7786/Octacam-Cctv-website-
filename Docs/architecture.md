@@ -207,7 +207,7 @@ Frontend:
 - pre-rendering for suitable static content
 - REST communication with Django
 
-Exact package versions should be pinned in the project lockfile when implementation begins.
+Exact package versions should be pinned in the project lockfile when implementation begins. These are agreed requirements: `frontend/` is currently empty, with no package, routes, rendering runtime, token stylesheet, or UI components. See the [frontend readiness review](frontend-readiness.md) for the dated implementation inventory and contract gaps; this architecture remains the intended design.
 
 A large global state library is **not** required initially.
 
@@ -225,7 +225,7 @@ Motion is optional visual polish within the stated scope. Essential homepage con
 
 | Decision | Reason and trade-off |
 | --- | --- |
-| Keep React, React Router Framework Mode, TypeScript and TSX | Preserves the existing SSR/loaders and typed routes/components. Typechecking adds a verification step and does not replace runtime API validation. |
+| Keep React, React Router Framework Mode, TypeScript and TSX | Preserves the agreed runtime SSR/pre-rendering strategy and provides typed loaders, routes, and components when the frontend is built. Typechecking adds a verification step and does not replace runtime API validation. |
 | Tailwind CSS with centralized tokens | Keeps responsive styling and shared design values consistent. Utility classes can become verbose, so repeated UI belongs in reusable components. |
 | Customized shadcn/ui in TypeScript mode | Provides reusable UI source that the owner can inspect and adapt. Local customization means the project owns accessibility checks, maintenance, and upstream update review. |
 | Restrained Motion for React; CSS for simple transitions | Adds limited homepage polish while CSS handles small interactions. Motion adds JavaScript and motion-accessibility checks, so limit imports to routes that need it and never make content visibility depend on animation. |
@@ -1778,6 +1778,19 @@ changes. Tokens never grant write or staff access; invalid/revoked/wrong-resourc
 links return the same neutral 404. Success and error responses use
 `private, no-store`, `no-referrer`, and `noindex, nofollow`. Django access logs
 redact the tokens; production proxy/monitoring logs must do the same.
+
+The future HTML tracking route and its data/error responses must apply the same
+privacy headers; the API headers alone do not protect the containing page.
+Exclude the route from pre-rendering, sitemaps, persistent client caches, and
+URL analytics, and redact tokens in frontend/runtime logs as well. The UX
+states and acceptance checks are defined in [UX section 10.1](ux-spec.md#101-private-guest-survey-status).
+
+Current `guest_tracking_url` values in receipts and emails point directly to the
+JSON API path above. They do not yet open a frontend screen. Coordinate the
+customer-page URL handoff in a separate backend/frontend integration slice,
+retaining the scoped signed token, neutral failures, and existing API links.
+Do not change the tracking API into an HTML endpoint or treat a booking
+reference as authorization.
 
 ---
 

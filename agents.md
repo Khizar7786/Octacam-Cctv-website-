@@ -9,7 +9,7 @@ These instructions apply to coding agents working in the OctaCam repository. The
 3. Read the relevant parts of `architecture.md` for structure, APIs, data, transactions, security, and tests.
 4. Check `README.md` and nearby code for actual setup commands and established conventions. Do not assume that a planned directory or feature already exists.
 
-The documents have distinct responsibilities; this file governs how agents work. If specifications disagree or a request changes an agreed behavior, identify the conflict and propose the smallest coordinated spec update. Follow an explicit new user decision after documenting the change. Never silently implement an out-of-scope feature. In particular, `architecture.md` calls for guest survey tracking while `ux-spec.md` does not yet fully specify that later tracking screen; update the UX spec when implementing that screen.
+The documents have distinct responsibilities; this file governs how agents work. If specifications disagree or a request changes an agreed behavior, identify the conflict and propose the smallest coordinated spec update. Follow an explicit new user decision after documenting the change. Never silently implement an out-of-scope feature. Secure guest survey tracking is defined in `Docs/ux-spec.md` section 10.1 and `Docs/architecture.md` section 34; follow both when implementing that later frontend screen.
 
 ## Work in small slices
 

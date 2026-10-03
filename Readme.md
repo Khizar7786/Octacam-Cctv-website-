@@ -4,9 +4,11 @@ OctaCam is a Pakistani CCTV store in development. This repository currently cont
 
 ## Frontend decisions
 
-The planned frontend keeps React, React Router Framework Mode, TypeScript/TSX, and the existing SSR/pre-rendering strategy. Use Tailwind CSS with centralized design tokens and shadcn/ui in TypeScript mode, customized to OctaCam. Motion for React is only for restrained homepage entrance and selected scroll animations; simple hover/focus transitions use CSS. Respect reduced motion, keep essential content immediately visible, and preserve manual promotional banners without auto-advance. See [architecture section 6.1](Docs/architecture.md#61-technology) for reasons and trade-offs and [the UX specification](Docs/ux-spec.md) for interaction requirements.
+The agreed frontend uses React, React Router Framework Mode, and TypeScript: `.ts` for non-JSX modules and `.tsx` for routes/components. Preserve the specified runtime SSR for dynamic public pages and pre-rendering for suitable static content; no rendering runtime exists yet. Use Tailwind CSS with centralized design tokens in `frontend/app/styles/tokens.css`, loaded by `app/styles/app.css`, and shadcn/ui in TypeScript mode under `app/components/ui/`, customized through the same tokens. Motion for React is only for restrained homepage entrance and selected scroll animations; simple hover/focus transitions use CSS. Respect reduced motion in both, keep essential content visible in initial SSR output before hydration, and preserve manual promotional banners without auto-advance. See [architecture section 6.1](Docs/architecture.md#61-technology) for reasons, ownership, and trade-offs and [the UX specification](Docs/ux-spec.md) for interaction requirements. These paths describe the planned foundation, not existing files.
 
 Frontend setup must document actual lint, typecheck, test, and production-build commands here, including typechecking for `.ts`/`.tsx` application files and route types. There is no frontend package or runnable frontend verification command yet.
+
+See the [frontend readiness review](Docs/frontend-readiness.md) for the 2 October 2026 repository inventory, verified OpenAPI coverage, integration gaps, and checks performed. Guest survey screen behavior and acceptance checks are in [UX section 10.1](Docs/ux-spec.md#101-private-guest-survey-status). Current guest receipt/email URLs lead to JSON tracking APIs; their handoff to customer-facing pages remains a separate integration task.
 
 ## Run the backend locally
 
