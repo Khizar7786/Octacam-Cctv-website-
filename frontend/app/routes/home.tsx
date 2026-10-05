@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link, useLoaderData } from "react-router";
+import { ProductCard } from "~/components/catalog/product-card";
 import { PromoCarousel } from "~/components/home/promo-carousel";
 import { brandLinks, categoryLinks } from "~/config/storefront";
 import { getPublicProducts, type PublicProduct } from "~/features/catalog/api";
@@ -21,27 +22,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     if (request.signal.aborted) throw error;
     return { products: [] as PublicProduct[], catalogUnavailable: true };
   }
-}
-
-function ProductImage({ product }: { product: PublicProduct }) {
-  const [failed, setFailed] = useState(false);
-  const image = product.primary_image;
-
-  return (
-    <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-md bg-muted text-sm font-semibold text-muted-foreground">
-      {image && !failed ? (
-        <img
-          alt={image.alt_text || product.name}
-          className="h-full w-full object-contain"
-          height={image.height}
-          loading="lazy"
-          onError={() => setFailed(true)}
-          src={image.image_url}
-          width={image.width}
-        />
-      ) : <span>Image unavailable</span>}
-    </div>
-  );
 }
 
 function SectionHeading({ eyebrow, title, id, children }: { eyebrow: string; title: string; id: string; children?: ReactNode }) {
@@ -83,22 +63,14 @@ export default function Home() {
             </Link>
           ))}
         </div>
+        <Link className="mt-5 inline-flex min-h-11 items-center text-sm" to="/shop">Browse all published products</Link>
       </section>
 
       {products.length > 0 ? (
         <section aria-labelledby="products-heading" id="published-products">
           <SectionHeading eyebrow="From the catalog" id="products-heading" title="Published equipment">Current records from the public catalog. Product detail pages are coming soon.</SectionHeading>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {products.map((product) => (
-              <article className="rounded-lg border border-border bg-card p-4 shadow-sm" key={product.id}>
-                <ProductImage product={product} />
-                <p className="mt-4 text-xs font-semibold text-muted-foreground">{product.brand.name} · {product.category.name}</p>
-                <h3 className="mt-1 text-base font-bold leading-snug">{product.name}</h3>
-                <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{product.sku}</p>
-                <p className="mt-4 text-lg font-bold">PKR {product.selling_price}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{product.is_in_stock ? "In stock" : "Out of stock"}</p>
-              </article>
-            ))}
+            {products.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         </section>
       ) : null}

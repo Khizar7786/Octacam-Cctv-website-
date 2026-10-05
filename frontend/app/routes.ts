@@ -3,6 +3,8 @@ import { plannedPages } from "./config/storefront";
 
 export default [
   index("routes/home.tsx"),
+  route("shop", "routes/shop.tsx"),
+  route("products/:slug", "routes/product-pending.tsx"),
   route("foundation", "routes/foundation.tsx"),
   route("visual-foundation", "routes/visual-foundation.tsx"),
   ...plannedPages.map(({ to }) => route(to.slice(1), "routes/planned.tsx", {

@@ -42,6 +42,26 @@ test("a direct foundation request server-renders the real catalog result", async
   }
 });
 
+test("a direct shop request renders the real published catalog state in initial HTML", async () => {
+  const productsResponse = await fetch(`${frontendOrigin}/api/v1/catalog/products/`, {
+    signal: AbortSignal.timeout(5_000),
+  });
+  const products = await productsResponse.json() as { count: number };
+  const response = await fetch(`${frontendOrigin}/shop`, { signal: AbortSignal.timeout(5_000) });
+  const visibleHtml = (await response.text()).split("<script")[0];
+
+  assert.equal(response.status, 200);
+  assert.match(visibleHtml, /Shop CCTV equipment/);
+  if (products.count === 0) {
+    assert.match(visibleHtml, /No published products yet/);
+    assert.doesNotMatch(visibleHtml, /<article/);
+  } else {
+    assert.match(visibleHtml, /Published products/);
+    assert.match(visibleHtml, /Model\/SKU:/);
+    assert.match(visibleHtml, /PKR/);
+  }
+});
+
 test("the development proxy preserves Django's structured validation error", async () => {
   const client = createApiClient({
     fetch: async (input, init) => fetch(new URL(String(input), frontendOrigin), init),

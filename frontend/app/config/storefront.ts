@@ -29,7 +29,6 @@ export const policyLinks = [
 ] as const;
 
 export const plannedPages = [
-  { label: "Shop", to: "/shop", detail: "The product catalog screen is being built." },
   { label: "Hikvision", to: "/brands/hikvision", detail: "The Hikvision brand page is being built." },
   { label: "Dahua", to: "/brands/dahua", detail: "The Dahua brand page is being built." },
   { label: "All brands", to: "/brands", detail: "Brand browsing is being built." },

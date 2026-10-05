@@ -55,6 +55,18 @@ fallback, reduced motion, and phone/tablet/desktop layouts were checked in Edge.
 The Django server was not available for a fresh live-catalog check in this
 slice; the published-record case used a contract-shaped test response.
 
+**Shop update, 5 October 2026:** `/shop` renders the paginated public product
+collection in React Router's initial HTML, with a reusable homepage/shop card,
+textual stock state, exact decimal PKR pricing, valid sale comparison, image
+fallback, and an empty state. Pagination follows the backend's validated
+next/previous links. Invalid page options and API failure have recoverable
+states. Published zero-stock products stay visible. Product detail links open an
+honest `noindex` development page until that separate slice is built. Search,
+filter, sort, and brand/category browsing controls are still pending.
+The shop production checks cover visible initial HTML, a second page, empty
+catalog, invalid URLs, backend errors, sale display, and zero stock; the
+production smoke suite now has 14 checks.
+
 ## Repository snapshot reviewed on 2 October 2026
 
 | Requirement | What exists | Remaining work |

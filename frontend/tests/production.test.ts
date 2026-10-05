@@ -19,6 +19,7 @@ let apiOrigin: string;
 let output = "";
 let catalogStatus = 200;
 let catalogReply: unknown = { count: 0, next: null, previous: null, results: [] };
+let catalogResponder: ((path: string) => unknown) | null = null;
 
 before(async () => {
   await access(buildUrl).catch(() => {
@@ -27,7 +28,7 @@ before(async () => {
   apiServer = createHttpServer((request, response) => {
     if (request.url?.startsWith("/api/v1/catalog/products/")) {
       response.writeHead(catalogStatus, { "Content-Type": "application/json" });
-      response.end(JSON.stringify(catalogReply));
+      response.end(JSON.stringify(catalogResponder ? catalogResponder(request.url ?? "") : catalogReply));
       return;
     }
     response.writeHead(404, { "Content-Type": "application/json" });
@@ -93,7 +94,7 @@ after(async () => {
 });
 
 test("production serves SSR documents on direct and refreshed nested requests", async () => {
-  for (const path of ["/", "/foundation", "/foundation", "/visual-foundation"]) {
+  for (const path of ["/", "/foundation", "/foundation", "/visual-foundation", "/shop", "/shop"]) {
     const response = await fetch(`${baseUrl}${path}`);
     const html = await response.text();
     assert.equal(response.status, 200);
@@ -110,10 +111,114 @@ test("production serves SSR documents on direct and refreshed nested requests", 
       assert.match(html, /Built for clear decisions/);
       assert.match(html, /src="\/brand\/octacam-logo\.png"/);
       assert.match(html, /Buttons and fields/);
+    } else if (path === "/shop") {
+      assert.match(html, /Shop CCTV equipment/);
+      assert.match(html, /No published products yet/);
     } else {
       assert.match(html, /Build around the equipment you need/);
     }
   }
+});
+
+test("shop renders published catalog cards and backend pagination in initial HTML", async () => {
+  const saleProduct = {
+    id: 11,
+    brand: { id: 1, name: "Hikvision", slug: "hikvision" },
+    category: { id: 2, name: "Cameras", slug: "cameras" },
+    sku: "CAM-11", slug: "cam-11", name: "Published sale camera", short_description: "Recorded by staff",
+    regular_price: "12000.00", sale_price: "9999.00", selling_price: "9999.00",
+    stock_quantity: 4, is_in_stock: true, primary_image: null,
+  };
+  const zeroStockProduct = {
+    ...saleProduct,
+    id: 12, sku: "DRV-12", slug: "drv-12", name: "Published zero-stock recorder",
+    category: { id: 3, name: "Recorders", slug: "recorders" },
+    regular_price: "5000.00", sale_price: "5000.00", selling_price: "5000.00",
+    stock_quantity: 0, is_in_stock: false,
+    primary_image: {
+      id: 9, image_url: "/media/products/recorder.webp", alt_text: "Front of recorder",
+      sort_order: 0, width: 640, height: 480, created_at: "2026-10-05T00:00:00Z",
+    },
+  };
+  const remainingFirstPage = Array.from({ length: 18 }, (_, index) => ({
+    ...saleProduct,
+    id: 20 + index, sku: `ACC-${20 + index}`, slug: `acc-${20 + index}`, name: `Published accessory ${20 + index}`,
+    regular_price: "1000.00", sale_price: null, selling_price: "1000.00", primary_image: null,
+  }));
+  catalogResponder = (path) => path.includes("page=2")
+    ? { count: 21, next: null, previous: "http://internal-backend:8000/api/v1/catalog/products/", results: [{ ...saleProduct, id: 13, sku: "ACC-13", slug: "acc-13", name: "Published accessory 13" }] }
+    : { count: 21, next: "http://internal-backend:8000/api/v1/catalog/products/?page=2", previous: null, results: [saleProduct, zeroStockProduct, ...remainingFirstPage] };
+  try {
+    const firstResponse = await fetch(`${baseUrl}/shop`);
+    const first = (await firstResponse.text()).split("<script")[0];
+    assert.equal(firstResponse.status, 200);
+    assert.match(first, /Published sale camera/);
+    assert.match(first, /Published zero-stock recorder/);
+    assert.match(first, /Model\/SKU:(?:\s|<!-- -->)*CAM-11/);
+    assert.match(first, /PKR(?:\s|<!-- -->)*9999\.00/);
+    assert.match(first, /Regular price:/);
+    assert.equal((first.match(/<s>/g) ?? []).length, 1, "only the lower valid sale has a struck regular price");
+    assert.match(first, /Out of stock/);
+    assert.match(first, /Image unavailable/);
+    assert.match(first, /alt="Front of recorder"/);
+    assert.match(first, /href="\/shop\?page=2"/);
+    assert.doesNotMatch(first, /Free shipping|Warranty included|Add to cart/);
+
+    const secondResponse = await fetch(`${baseUrl}/shop?page=2`);
+    const second = (await secondResponse.text()).split("<script")[0];
+    assert.equal(secondResponse.status, 200);
+    assert.match(second, /Published accessory 13/);
+    assert.doesNotMatch(second, /Published zero-stock recorder/);
+    assert.match(second, /Page(?:\s|<!-- -->)*2/);
+    assert.match(second, /Previous page/);
+    assert.match(second, /href="\/shop"/);
+    assert.doesNotMatch(second, /Next page/);
+  } finally {
+    catalogResponder = null;
+  }
+});
+
+test("shop handles empty, invalid-page, and catalog-error states without invented products", async () => {
+  const empty = (await (await fetch(`${baseUrl}/shop`)).text()).split("<script")[0];
+  assert.match(empty, /No published products yet/);
+  assert.doesNotMatch(empty, /<article/);
+
+  for (const path of ["/shop?page=0", "/shop?q=unimplemented"]) {
+    const invalid = (await (await fetch(`${baseUrl}${path}`)).text()).split("<script")[0];
+    assert.match(invalid, /This catalog page is unavailable/);
+    assert.match(invalid, /Browse from page 1/);
+  }
+
+  catalogStatus = 404;
+  catalogReply = { error: { code: "NOT_FOUND", message: "Invalid page.", fields: {} } };
+  try {
+    const invalid = (await (await fetch(`${baseUrl}/shop?page=999`)).text()).split("<script")[0];
+    assert.match(invalid, /This catalog page is unavailable/);
+  } finally {
+    catalogStatus = 200;
+    catalogReply = { count: 0, next: null, previous: null, results: [] };
+  }
+
+  catalogStatus = 503;
+  catalogReply = { error: { code: "CATALOG_UNAVAILABLE", message: "Unavailable", fields: {} } };
+  try {
+    const error = (await (await fetch(`${baseUrl}/shop`)).text()).split("<script")[0];
+    assert.match(error, /Products could not be loaded/);
+    assert.match(error, /Try again/);
+    assert.doesNotMatch(error, /<article/);
+  } finally {
+    catalogStatus = 200;
+    catalogReply = { count: 0, next: null, previous: null, results: [] };
+  }
+});
+
+test("product-card destination is an honest placeholder until detail pages exist", async () => {
+  const response = await fetch(`${baseUrl}/products/cam-11`);
+  const html = (await response.text()).split("<script")[0];
+  assert.equal(response.status, 200);
+  assert.match(html, /Product details are coming soon/);
+  assert.match(html, /Return to shop/);
+  assert.match(response.headers.get("x-robots-tag") ?? "", /noindex/);
 });
 
 test("homepage renders its first promotion and static sections without catalog records", async () => {
