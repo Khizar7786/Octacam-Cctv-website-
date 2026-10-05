@@ -62,6 +62,20 @@ test("a direct shop request renders the real published catalog state in initial 
   }
 });
 
+test("the live search contract and direct SSR search route agree on result count", async () => {
+  const query = "q=octacam-no-such-model&min_price=0.00&availability=in_stock&sort=price_asc";
+  const productsResponse = await fetch(`${frontendOrigin}/api/v1/catalog/products/?${query}`, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(productsResponse.status, 200);
+  const products = await productsResponse.json() as { count: number };
+  const searchResponse = await fetch(`${frontendOrigin}/search?${query}`, { signal: AbortSignal.timeout(5_000) });
+  const html = (await searchResponse.text()).split("<script")[0];
+  assert.equal(searchResponse.status, 200);
+  assert.match(html, /Search results for octacam-no-such-model/);
+  assert.match(html, new RegExp(`${products.count}(?:\\s|<!-- -->)*products?`));
+  assert.match(html, /Results for/);
+  if (products.count === 0) assert.match(html, /No matching products/);
+});
+
 test("live brand and category routes agree with active public taxonomy", async () => {
   const [brandResponse, categoryResponse] = await Promise.all([
     fetch(`${frontendOrigin}/api/v1/catalog/brands/`, { signal: AbortSignal.timeout(5_000) }),

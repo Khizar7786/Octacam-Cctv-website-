@@ -33,6 +33,12 @@ before(async () => {
   });
   apiServer = createHttpServer((request, response) => {
     if (request.url?.startsWith("/api/v1/catalog/products/")) {
+      const productQuery = new URL(request.url, "http://localhost").searchParams;
+      if (productQuery.get("category") === "storage" && productQuery.has("spec_resolution")) {
+        response.writeHead(400, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ error: { code: "VALIDATION_ERROR", message: "Invalid filters.", fields: { spec_resolution: ["No active filterable specification for this category."] } } }));
+        return;
+      }
       response.writeHead(catalogStatus, { "Content-Type": "application/json" });
       response.end(JSON.stringify(catalogResponder ? catalogResponder(request.url ?? "") : catalogReply));
       return;
@@ -54,11 +60,18 @@ before(async () => {
       return;
     }
     if (url.pathname === "/api/v1/catalog/filters/") {
+      const specifications = url.searchParams.get("category") === "cameras" ? [
+        { key: "resolution", label: "Resolution", type: "choice", unit: null, options: [{ value: "2mp", label: "2 MP" }, { value: "4mp", label: "4 MP" }] },
+        { key: "outdoor", label: "Outdoor use", type: "boolean", unit: null, options: [{ value: true, label: "Yes" }, { value: false, label: "No" }] },
+        { key: "ir_distance", label: "IR distance", type: "decimal_range", unit: "m", min: "20.0000", max: "50.0000" },
+      ] : url.searchParams.get("category") === "storage" ? [
+        { key: "capacity", label: "Capacity", type: "integer_range", unit: "TB", min: "1", max: "4" },
+      ] : [];
       response.writeHead(200, { "Content-Type": "application/json" });
       response.end(JSON.stringify({
         brand: brands.filter((item) => item.is_active).map((item) => ({ value: item.slug, label: item.name })),
         category: categories.filter((item) => item.is_active).map((item) => ({ value: item.slug, label: item.name })),
-        price: { min: null, max: null }, specifications: [],
+        price: { min: null, max: null }, specifications,
       }));
       return;
     }
@@ -125,7 +138,7 @@ after(async () => {
 });
 
 test("production serves SSR documents on direct and refreshed nested requests", async () => {
-  for (const path of ["/", "/foundation", "/foundation", "/visual-foundation", "/shop", "/shop"]) {
+  for (const path of ["/", "/foundation", "/foundation", "/visual-foundation", "/shop", "/shop", "/search"]) {
     const response = await fetch(`${baseUrl}${path}`);
     const html = await response.text();
     assert.equal(response.status, 200);
@@ -142,8 +155,8 @@ test("production serves SSR documents on direct and refreshed nested requests", 
       assert.match(html, /Built for clear decisions/);
       assert.match(html, /src="\/brand\/octacam-logo\.png"/);
       assert.match(html, /Buttons and fields/);
-    } else if (path === "/shop") {
-      assert.match(html, /Shop CCTV equipment/);
+    } else if (path === "/shop" || path === "/search") {
+      assert.match(html, path === "/shop" ? /Shop CCTV equipment/ : /Search CCTV equipment/);
       assert.match(html, /No published products yet/);
     } else {
       assert.match(html, /Build around the equipment you need/);
@@ -214,17 +227,21 @@ test("shop handles empty, invalid-page, and catalog-error states without invente
   assert.match(empty, /No published products yet/);
   assert.doesNotMatch(empty, /<article/);
 
-  for (const path of ["/shop?page=0", "/shop?q=unimplemented"]) {
+  for (const path of ["/shop?page=0", "/shop?unsupported=option"]) {
     const invalid = (await (await fetch(`${baseUrl}${path}`)).text()).split("<script")[0];
-    assert.match(invalid, /This catalog page is unavailable/);
-    assert.match(invalid, /Browse from page 1/);
+    assert.match(invalid, /This catalog selection is unavailable/);
+    assert.match(invalid, /Return to page 1/);
   }
+
+  const noMatch = (await (await fetch(`${baseUrl}/shop?q=unimplemented`)).text()).split("<script")[0];
+  assert.match(noMatch, /Results for “unimplemented”/);
+  assert.match(noMatch, /No matching products/);
 
   catalogStatus = 404;
   catalogReply = { error: { code: "NOT_FOUND", message: "Invalid page.", fields: {} } };
   try {
     const invalid = (await (await fetch(`${baseUrl}/shop?page=999`)).text()).split("<script")[0];
-    assert.match(invalid, /This catalog page is unavailable/);
+    assert.match(invalid, /This catalog selection is unavailable/);
   } finally {
     catalogStatus = 200;
     catalogReply = { count: 0, next: null, previous: null, results: [] };
@@ -243,6 +260,155 @@ test("shop handles empty, invalid-page, and catalog-error states without invente
   }
 });
 
+test("search SSR preserves query, filters, sort, and scope across product pages", async () => {
+  const product = {
+    id: 301, brand: { id: 1, name: "Hikvision", slug: "hikvision" },
+    category: { id: 1, name: "Cameras", slug: "cameras" },
+    sku: "DS-2CE", slug: "ds-2ce", name: "Published camera model", short_description: "Public search fixture",
+    regular_price: "9000.00", sale_price: null, selling_price: "9000.00",
+    stock_quantity: 1, is_in_stock: true, primary_image: null,
+  };
+  const seenQueries: URLSearchParams[] = [];
+  catalogResponder = (path) => {
+    const search = new URL(path, "http://localhost").searchParams;
+    seenQueries.push(search);
+    if (search.get("q") === "missing") return { count: 0, next: null, previous: null, results: [] };
+    if (search.get("q") === "DS-2CE") {
+      const second = search.get("page") === "2";
+      return {
+        count: 21,
+        next: second ? null : "http://internal-backend:8000/api/v1/catalog/products/?page=2&q=DS-2CE",
+        previous: second ? "http://internal-backend:8000/api/v1/catalog/products/?q=DS-2CE" : null,
+        results: [product],
+      };
+    }
+    return { count: 0, next: null, previous: null, results: [] };
+  };
+  try {
+    const query = "q=DS-2CE&brand=hikvision&category=cameras&min_price=5000.00&max_price=10000.00&availability=in_stock&sort=price_asc";
+    const first = await fetch(`${baseUrl}/search?${query}`);
+    const firstHtml = (await first.text()).split("<script")[0];
+    assert.equal(first.status, 200);
+    assert.match(firstHtml, /Search results for DS-2CE \| OctaCam/);
+    assert.match(firstHtml, /Results for “DS-2CE”/);
+    assert.match(firstHtml, /Published camera model/);
+    assert.match(firstHtml, /Model\/SKU:(?:\s|<!-- -->)*DS-2CE/);
+    assert.match(firstHtml, /21(?:\s|<!-- -->)*products/);
+    assert.match(firstHtml, /Remove Brand: Hikvision filter/);
+    assert.match(firstHtml, /Remove Category: Cameras filter/);
+    assert.match(firstHtml, /Remove From PKR 5000\.00 filter/);
+    assert.match(firstHtml, /href="\/search\?q=DS-2CE&amp;brand=hikvision&amp;category=cameras&amp;min_price=5000\.00&amp;max_price=10000\.00&amp;availability=in_stock&amp;sort=price_asc&amp;page=2"/);
+    assert.equal(seenQueries.at(-1)?.get("q"), "DS-2CE");
+    assert.equal(seenQueries.at(-1)?.get("sort"), "price_asc");
+    assert.equal(seenQueries.at(-1)?.get("min_price"), "5000.00");
+
+    const refreshed = (await (await fetch(`${baseUrl}/search?${query}`)).text()).split("<script")[0];
+    assert.match(refreshed, /Results for “DS-2CE”/);
+    assert.match(refreshed, /Remove Brand: Hikvision filter/);
+    assert.match(refreshed, /Published camera model/);
+
+    const second = (await (await fetch(`${baseUrl}/search?${query}&page=2`)).text()).split("<script")[0];
+    assert.match(second, /Page(?:\s|<!-- -->)*2/);
+    assert.match(second, /href="\/search\?q=DS-2CE&amp;brand=hikvision&amp;category=cameras&amp;min_price=5000\.00&amp;max_price=10000\.00&amp;availability=in_stock&amp;sort=price_asc"/);
+
+    const zero = (await (await fetch(`${baseUrl}/search?q=missing&brand=hikvision`)).text()).split("<script")[0];
+    assert.match(zero, /Results for “missing”/);
+    assert.match(zero, /No matching products/);
+    assert.match(zero, /href="\/search\?q=missing"/);
+    assert.match(zero, /href="\/#categories"/);
+    assert.doesNotMatch(zero, /<article/);
+  } finally {
+    catalogResponder = null;
+  }
+});
+
+test("technical filters render by category and preserve combined query on SSR reload and pagination", async () => {
+  const seenQueries: URLSearchParams[] = [];
+  catalogResponder = (path) => {
+    const search = new URL(path, "http://localhost").searchParams;
+    seenQueries.push(search);
+    if (search.get("spec_resolution") === "unobserved-active-choice") return { count: 0, next: null, previous: null, results: [] };
+    return {
+      count: 21,
+      next: search.get("page") === "2" ? null : "http://internal-backend:8000/api/v1/catalog/products/?page=2",
+      previous: search.get("page") === "2" ? "http://internal-backend:8000/api/v1/catalog/products/" : null,
+      results: [],
+    };
+  };
+  try {
+    const query = "q=DS-2CE&category=cameras&brand=hikvision&spec_resolution=2mp&spec_outdoor=true&spec_ir_distance_min=20.0000&spec_ir_distance_max=25&sort=price_asc";
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetch(`${baseUrl}/search?${query}`);
+      const html = (await response.text()).split("<script")[0];
+      assert.equal(response.status, 200);
+      assert.match(html, /Technical specifications/);
+      assert.match(html, /Resolution/);
+      assert.match(html, /Outdoor use/);
+      assert.match(html, /IR distance/);
+      assert.match(html, /Remove Resolution: 2 MP filter/);
+      assert.match(html, /Remove Outdoor use: Yes filter/);
+      assert.match(html, /spec_ir_distance_max=25&amp;spec_ir_distance_min=20\.0000&amp;spec_outdoor=true&amp;spec_resolution=2mp&amp;sort=price_asc&amp;page=2/);
+      assert.equal(seenQueries.at(-1)?.get("spec_resolution"), "2mp");
+      assert.equal(seenQueries.at(-1)?.get("spec_outdoor"), "true");
+      assert.equal(seenQueries.at(-1)?.get("spec_ir_distance_min"), "20.0000");
+    }
+    const pageTwo = (await (await fetch(`${baseUrl}/search?${query}&page=2`)).text()).split("<script")[0];
+    assert.match(pageTwo, /Remove Resolution: 2 MP filter/);
+    assert.match(pageTwo, /Page(?:\s|<!-- -->)*2/);
+
+    const categoryPage = (await (await fetch(`${baseUrl}/categories/cameras?spec_resolution=2mp&spec_ir_distance_min=20`)).text()).split("<script")[0];
+    assert.match(categoryPage, /Remove Resolution: 2 MP filter/);
+    assert.match(categoryPage, /href="\/categories\/cameras\?spec_ir_distance_min=20&amp;spec_resolution=2mp&amp;page=2"/);
+    assert.equal(seenQueries.at(-1)?.get("category"), "cameras");
+
+    const storage = (await (await fetch(`${baseUrl}/search?category=storage&spec_capacity_min=2&spec_capacity_max=3`)).text()).split("<script")[0];
+    assert.match(storage, /Capacity \(TB\)/);
+    assert.doesNotMatch(storage, /IR distance/);
+    assert.doesNotMatch(storage, /Outdoor use/);
+    assert.equal(seenQueries.at(-1)?.get("spec_capacity_min"), "2");
+
+    const unobserved = (await (await fetch(`${baseUrl}/search?category=cameras&spec_resolution=unobserved-active-choice`)).text()).split("<script")[0];
+    assert.match(unobserved, /No matching products/);
+    assert.equal(seenQueries.at(-1)?.get("spec_resolution"), "unobserved-active-choice");
+
+    const priorCalls = seenQueries.length;
+    const incompatible = (await (await fetch(`${baseUrl}/search?category=storage&spec_resolution=2mp`)).text()).split("<script")[0];
+    assert.equal(seenQueries.length, priorCalls);
+    assert.match(incompatible, /No active filterable specification for this category/);
+    assert.match(incompatible, /Remove resolution: 2mp filter/);
+  } finally {
+    catalogResponder = null;
+  }
+});
+
+test("invalid search prices retain entered values and avoid a catalog request", async () => {
+  let calls = 0;
+  catalogResponder = () => { calls += 1; return { count: 0, next: null, previous: null, results: [] }; };
+  try {
+    const response = await fetch(`${baseUrl}/search?q=DS-2CE&min_price=100.00&max_price=50.00`);
+    const html = (await response.text()).split("<script")[0];
+    assert.equal(response.status, 200);
+    assert.match(html, /Maximum price must be at least minimum price/);
+    assert.match(html, /value="DS-2CE"/);
+    assert.match(html, /value="100.00"/);
+    assert.match(html, /value="50.00"/);
+    assert.match(html, /aria-invalid="true"/);
+    assert.match(html, /Start a new search/);
+    assert.equal(calls, 0);
+  } finally {
+    catalogResponder = null;
+  }
+});
+
+test("unknown filter values have a recoverable state without a false result claim", async () => {
+  const response = await fetch(`${baseUrl}/search?q=DS-2CE&brand=no-such-brand`);
+  const html = (await response.text()).split("<script")[0];
+  assert.equal(response.status, 200);
+  assert.match(html, /This brand is unavailable/);
+  assert.match(html, /Start a new search/);
+  assert.doesNotMatch(html, /No matching products/);
+});
+
 test("All Brands and scoped brand/category pages render active data in initial HTML", async () => {
   const product = {
     id: 101, brand: { id: 1, name: "Hikvision", slug: "hikvision" },
@@ -251,8 +417,10 @@ test("All Brands and scoped brand/category pages render active data in initial H
     regular_price: "12000.00", sale_price: null, selling_price: "12000.00",
     stock_quantity: 0, is_in_stock: false, primary_image: null,
   };
+  const seenScope: URLSearchParams[] = [];
   catalogResponder = (path) => {
     const query = new URL(path, "http://localhost").searchParams;
+    seenScope.push(query);
     if (query.get("brand") === "hikvision" || query.get("category") === "cameras") {
       return query.get("page") === "2"
         ? { count: 21, next: null, previous: "http://internal-backend:8000/api/v1/catalog/products/?brand=hikvision&category=cameras", results: [product] }
@@ -280,6 +448,14 @@ test("All Brands and scoped brand/category pages render active data in initial H
     assert.match(brandHtml, /name="category"/);
     assert.match(brandHtml, /href="\/brands\/hikvision\?category=cameras&amp;page=2"/);
 
+    const brandFiltered = (await (await fetch(`${baseUrl}/brands/hikvision?category=cameras&min_price=5000.00&availability=in_stock&sort=price_desc`)).text()).split("<script")[0];
+    assert.match(brandFiltered, /name="category"/);
+    assert.doesNotMatch(brandFiltered, /name="brand"/);
+    assert.match(brandFiltered, /href="\/brands\/hikvision\?category=cameras&amp;min_price=5000.00&amp;availability=in_stock&amp;sort=price_desc&amp;page=2"/);
+    assert.equal(seenScope.at(-1)?.get("brand"), "hikvision");
+    assert.equal(seenScope.at(-1)?.get("category"), "cameras");
+    assert.equal(seenScope.at(-1)?.get("min_price"), "5000.00");
+
     const category = await fetch(`${baseUrl}/categories/cameras?brand=hikvision`);
     const categoryHtml = (await category.text()).split("<script")[0];
     assert.equal(category.status, 200);
@@ -287,6 +463,12 @@ test("All Brands and scoped brand/category pages render active data in initial H
     assert.match(categoryHtml, /name="brand"/);
     assert.match(categoryHtml, /Published scope camera/);
     assert.match(categoryHtml, /href="\/categories\/cameras\?brand=hikvision&amp;page=2"/);
+    const categoryFiltered = (await (await fetch(`${baseUrl}/categories/cameras?brand=hikvision&max_price=12000.00&sort=price_asc`)).text()).split("<script")[0];
+    assert.match(categoryFiltered, /name="brand"/);
+    assert.doesNotMatch(categoryFiltered, /name="category"/);
+    assert.match(categoryFiltered, /href="\/categories\/cameras\?brand=hikvision&amp;max_price=12000.00&amp;sort=price_asc&amp;page=2"/);
+    assert.equal(seenScope.at(-1)?.get("category"), "cameras");
+    assert.equal(seenScope.at(-1)?.get("max_price"), "12000.00");
     const next = await fetch(`${baseUrl}/categories/cameras?brand=hikvision&page=2`);
     const nextHtml = (await next.text()).split("<script")[0];
     assert.match(nextHtml, /Page(?:\s|<!-- -->)*2/);

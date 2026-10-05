@@ -88,14 +88,13 @@ export function Layout({ children }: { children: ReactNode }) {
 export default function App() {
   const navigation = useNavigation();
   const location = useLocation();
-  const previousPath = useRef(`${location.pathname}${location.search}`);
+  const previousPath = useRef(location.pathname);
 
   useEffect(() => {
-    const nextPath = `${location.pathname}${location.search}`;
-    if (previousPath.current === nextPath) return;
-    previousPath.current = nextPath;
+    if (previousPath.current === location.pathname) return;
+    previousPath.current = location.pathname;
     document.getElementById("main-content")?.focus();
-  }, [location.pathname, location.search]);
+  }, [location.pathname]);
 
   return (
     <>

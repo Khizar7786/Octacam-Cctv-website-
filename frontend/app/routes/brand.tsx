@@ -1,5 +1,5 @@
-import { useLoaderData } from "react-router";
-import { CatalogListing } from "~/components/catalog/catalog-listing";
+import { useLoaderData, useParams } from "react-router";
+import { DiscoveryPage } from "~/components/catalog/discovery-page";
 import { loadScopedCatalog } from "~/features/catalog/scoped-listing.server";
 import type { Route } from "./+types/brand";
 
@@ -16,5 +16,17 @@ export function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function Brand() {
-  return <CatalogListing data={useLoaderData<typeof loader>()} kind="brand" />;
+  const { taxonomy, discovery } = useLoaderData<typeof loader>();
+  const { slug } = useParams();
+  return <DiscoveryPage
+    data={discovery}
+    heading={{
+      eyebrow: "Browse by brand",
+      title: taxonomy?.name ?? "Brand equipment",
+      description: taxonomy?.description || "Published CCTV equipment in this brand.",
+      breadcrumbs: [{ label: "Home", to: "/" }, { label: "All brands", to: "/brands" }, { label: taxonomy?.name ?? "Brand equipment" }],
+    }}
+    path={`/brands/${taxonomy?.slug ?? slug ?? ""}`}
+    scope={{ brand: taxonomy?.slug ?? slug ?? "" }}
+  />;
 }

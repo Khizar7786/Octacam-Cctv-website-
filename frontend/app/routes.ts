@@ -4,6 +4,7 @@ import { plannedPages } from "./config/storefront";
 export default [
   index("routes/home.tsx"),
   route("shop", "routes/shop.tsx"),
+  route("search", "routes/search.tsx"),
   route("brands", "routes/brands.tsx"),
   route("brands/:slug", "routes/brand.tsx"),
   route("categories/:slug", "routes/category.tsx"),

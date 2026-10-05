@@ -29,7 +29,6 @@ export const policyLinks = [
 ] as const;
 
 export const plannedPages = [
-  { label: "Search", to: "/search", detail: "Product and model search is being built." },
   { label: "Cart", to: "/cart", detail: "The cart and its item count are being built." },
   { label: "Account", to: "/login", detail: "Customer sign-in and account screens are being built." },
   { label: "Free Lahore site survey", to: "/surveys", detail: "The free site survey booking screen is being built. Installation is quoted and scheduled after the survey." },

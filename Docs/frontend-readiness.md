@@ -79,6 +79,27 @@ populated and filtered cases are covered by the production API fixtures.
 Search, price/availability/specification filters, sorting, and product detail
 remain separate slices. The global development `noindex` policy still applies.
 
+**Search and basic filters update, 5 October 2026:** `/search`, `/shop`, and
+the existing brand/category pages use the public product search contract for
+name and exact/partial model/SKU queries, brand/category scope, decimal PKR
+price bounds, textual stock availability, and relevance or price sorting.
+Committed query, filters, sort, and page live in the URL. Filter chips remove
+one option at a time; mobile filters use an Apply/Clear panel. Direct SSR loads,
+pagination, empty results, URL reload, and history-state restoration are covered
+by the frontend checks. Category changes clear a draft brand selection with a
+visible explanation. Technical specification filters remain a later slice.
+
+**Category-specific technical filters update, 5 October 2026:** Catalog
+filter controls now come from active category metadata: choice and boolean
+options and integer/decimal minimum and maximum fields. URL queries use the
+backend's `spec_<key>` or `spec_<key>_min`/`spec_<key>_max` names. Changing
+category clears technical selections and explains the change; the new
+category's options load when the shopper applies that selection. Desktop and
+mobile share the same controls. Restored technical URLs retain their values;
+Django validates choices and definitions that metadata cannot fully describe,
+and field errors remain available for correction. Published catalog records
+are still required before real-world filter combinations can be verified.
+
 ## Repository snapshot reviewed on 2 October 2026
 
 | Requirement | What exists | Remaining work |

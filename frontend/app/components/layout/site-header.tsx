@@ -69,8 +69,10 @@ export function SiteHeader() {
   const searchTrigger = useRef<HTMLButtonElement>(null);
   const menuClose = useRef<HTMLButtonElement>(null);
   const searchClose = useRef<HTMLButtonElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
   const logoLink = useRef<HTMLAnchorElement>(null);
   const location = useLocation();
+  const currentSearch = location.pathname === "/search" ? new URLSearchParams(location.search).get("q") ?? "" : "";
 
   useEffect(() => {
     setOpenPanel(null);
@@ -78,7 +80,7 @@ export function SiteHeader() {
 
   useEffect(() => {
     if (openPanel === "menu") menuClose.current?.focus();
-    if (openPanel === "search") searchClose.current?.focus();
+    if (openPanel === "search") searchInput.current?.focus();
   }, [openPanel]);
 
   useEffect(() => {
@@ -131,14 +133,11 @@ export function SiteHeader() {
             <OctacamLogo alt="OctaCam home" />
           </Link>
 
-          <Link
-            className="hidden min-h-12 min-w-0 items-center gap-3 rounded-md border border-input bg-background px-4 text-muted-foreground no-underline hover:border-primary hover:bg-accent xl:flex"
-            to="/search"
-          >
-            <SearchIcon />
-            <span className="truncate font-normal">Search products and model numbers</span>
-            <span className="ml-auto shrink-0 text-xs font-semibold text-primary">Coming soon</span>
-          </Link>
+          <form action="/search" aria-label="Site search" className="hidden min-w-0 items-center gap-2 xl:flex" method="get" role="search">
+            <label className="sr-only" htmlFor="header-search">Search product names and model numbers</label>
+            <input className="min-h-12 min-w-0 flex-1 rounded-md border border-input bg-background px-4 text-foreground" defaultValue={currentSearch} id="header-search" key={location.pathname + location.search} maxLength={120} name="q" placeholder="Search products and model numbers" type="search" />
+            <button className="min-h-12 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover" type="submit">Search</button>
+          </form>
 
           <div className="flex items-center gap-2">
             <button
@@ -186,9 +185,11 @@ export function SiteHeader() {
             <h2 className="font-bold">Search the catalog</h2>
             <button className="min-h-11 rounded-md border border-border-strong px-3 text-sm font-semibold" onClick={closePanel} ref={searchClose} type="button">Close search</button>
           </div>
-          <Link className="mt-3 flex min-h-12 items-center gap-3 rounded-md border border-input px-3 text-muted-foreground no-underline" onClick={() => setOpenPanel(null)} to="/search">
-            <SearchIcon /><span>Product and model search · Coming soon</span>
-          </Link>
+          <form action="/search" aria-label="Mobile site search" className="mt-3 grid gap-2" method="get" onSubmit={() => setOpenPanel(null)} role="search">
+            <label className="text-sm font-semibold" htmlFor="mobile-search-field">Product name or model/SKU</label>
+            <input className="min-h-12 w-full rounded-md border border-input bg-background px-3 text-foreground" defaultValue={currentSearch} id="mobile-search-field" key={location.pathname + location.search} maxLength={120} name="q" placeholder="Search products and model numbers" ref={searchInput} type="search" />
+            <button className="min-h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover" type="submit">Search products</button>
+          </form>
         </Container>
       </div>
 
