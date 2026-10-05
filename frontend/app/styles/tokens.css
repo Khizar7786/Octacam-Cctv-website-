@@ -1,7 +1,75 @@
 :root {
-  /* Neutral foundation values; brand colors await approved-master review. */
-  --background: #ffffff;
-  --foreground: #171717;
-  --focus-ring: #171717;
-  --font-body: system-ui, sans-serif;
+  color-scheme: light;
+
+  /* Brand: sampled from the approved transparent OctaCam logo master. */
+  --brand: #005ffb;
+  --brand-hover: #004dcc;
+  --brand-soft: #eaf2ff;
+  --brand-foreground: #ffffff;
+
+  /* Shared shadcn/ui and application color roles. */
+  --background: #f5f7fa;
+  --foreground: #111820;
+  --card: #ffffff;
+  --card-foreground: #111820;
+  --popover: #ffffff;
+  --popover-foreground: #111820;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: #e8edf4;
+  --secondary-foreground: #1a2738;
+  --muted: #edf1f6;
+  --muted-foreground: #516173;
+  --accent: var(--brand-soft);
+  --accent-foreground: #003eaa;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --border: #cbd4df;
+  --border-strong: #94a3b5;
+  --input: #8795a8;
+  --ring: var(--brand);
+
+  --info: #0758ce;
+  --info-surface: #edf5ff;
+  --success: #176b45;
+  --success-surface: #edf9f2;
+  --warning: #805500;
+  --warning-surface: #fff7df;
+  --error: #a52219;
+  --error-surface: #fff1f0;
+
+  /* Typography: local system faces avoid font-loading shifts during SSR. */
+  --font-body: "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+  --font-technical: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --font-size-display: clamp(2.25rem, 7vw, 4.75rem);
+  --font-size-heading: clamp(1.65rem, 3.5vw, 2.5rem);
+  --font-size-body: 1rem;
+  --line-height-tight: 1.08;
+  --line-height-body: 1.6;
+
+  /* A four-pixel base keeps dense technical data and touch controls aligned. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+
+  --control-height: 2.75rem;
+  --page-max: 76rem;
+  --reading-max: 43rem;
+  --radius: 0.625rem;
+  --oc-radius-sm: 0.375rem;
+  --oc-radius-md: 0.625rem;
+  --oc-radius-lg: 0.875rem;
+  --oc-shadow-sm: 0 1px 2px rgb(17 24 32 / 8%);
+  --oc-shadow-raised: 0 12px 32px rgb(17 24 32 / 10%);
+  --focus-width: 3px;
+  --focus-offset: 3px;
+  --motion-duration-fast: 140ms;
+  --motion-duration-standard: 220ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }

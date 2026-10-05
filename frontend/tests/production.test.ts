@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createMemoryRouter, createRequestHandler, type ServerBuild } from "react-router";
+import { plannedPages } from "../app/config/storefront.ts";
 
 const frontendRoot = fileURLToPath(new URL("../", import.meta.url));
 const buildUrl = new URL("../build/server/index.js", import.meta.url);
@@ -16,6 +17,8 @@ let apiServer: HttpServer | undefined;
 let baseUrl: string;
 let apiOrigin: string;
 let output = "";
+let catalogStatus = 200;
+let catalogReply: unknown = { count: 0, next: null, previous: null, results: [] };
 
 before(async () => {
   await access(buildUrl).catch(() => {
@@ -23,8 +26,8 @@ before(async () => {
   });
   apiServer = createHttpServer((request, response) => {
     if (request.url?.startsWith("/api/v1/catalog/products/")) {
-      response.writeHead(200, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ count: 0, next: null, previous: null, results: [] }));
+      response.writeHead(catalogStatus, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(catalogReply));
       return;
     }
     response.writeHead(404, { "Content-Type": "application/json" });
@@ -90,7 +93,7 @@ after(async () => {
 });
 
 test("production serves SSR documents on direct and refreshed nested requests", async () => {
-  for (const path of ["/", "/foundation", "/foundation"]) {
+  for (const path of ["/", "/foundation", "/foundation", "/visual-foundation"]) {
     const response = await fetch(`${baseUrl}${path}`);
     const html = await response.text();
     assert.equal(response.status, 200);
@@ -103,9 +106,108 @@ test("production serves SSR documents on direct and refreshed nested requests", 
     if (path === "/foundation") {
       assert.match(html, /public catalog was loaded by the server API client during SSR/i);
       assert.match(html, /live catalog currently has no published products/i);
+    } else if (path === "/visual-foundation") {
+      assert.match(html, /Built for clear decisions/);
+      assert.match(html, /src="\/brand\/octacam-logo\.png"/);
+      assert.match(html, /Buttons and fields/);
     } else {
-      assert.match(html, /OctaCam is in development/);
+      assert.match(html, /Build around the equipment you need/);
     }
+  }
+});
+
+test("homepage renders its first promotion and static sections without catalog records", async () => {
+  const html = await (await fetch(baseUrl)).text();
+  assert.match(html, /Build around the equipment you need/);
+  assert.doesNotMatch(html, /Planning a CCTV setup in Lahore\?/);
+  assert.match(html, /href="\/#categories"/);
+  assert.match(html, /id="categories"/);
+  assert.match(html, /id="lahore-survey"/);
+  assert.match(html, /Hikvision/);
+  assert.match(html, /Dahua/);
+  assert.match(html, /Cash on delivery/);
+  assert.doesNotMatch(html, /id="published-products"/);
+  assert.match(html, /Previous promotion/);
+  assert.match(html, /Next promotion/);
+  for (const path of ["equipment-desktop.svg", "equipment-mobile.svg", "survey-desktop.svg", "survey-mobile.svg"]) {
+    const response = await fetch(`${baseUrl}/promotions/${path}`);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers.get("content-type") ?? "", /image\/svg\+xml/, path);
+  }
+});
+
+test("homepage shows only genuine public catalog records with server-provided money", async () => {
+  catalogReply = {
+    count: 1, next: null, previous: null,
+    results: [{
+      id: 7,
+      brand: { id: 1, name: "Hikvision", slug: "hikvision" },
+      category: { id: 2, name: "Cameras", slug: "cameras" },
+      sku: "MODEL-7",
+      slug: "model-7",
+      name: "Published camera",
+      short_description: "Public API fixture",
+      regular_price: "15000.00",
+      sale_price: null,
+      selling_price: "15000.00",
+      stock_quantity: 0,
+      is_in_stock: false,
+      primary_image: null,
+    }],
+  };
+  try {
+    const html = await (await fetch(baseUrl)).text();
+    assert.match(html, /id="published-products"/);
+    assert.match(html, /Published camera/);
+    assert.match(html, /MODEL-7/);
+    assert.match(html, /PKR(?:\s|<!-- -->)*15000\.00/);
+    assert.match(html, /Out of stock/);
+    assert.match(html, /Image unavailable/);
+    assert.doesNotMatch(html, /Add to cart/);
+  } finally {
+    catalogReply = { count: 0, next: null, previous: null, results: [] };
+  }
+});
+
+test("catalog failure leaves the SSR homepage usable with an honest status", async () => {
+  catalogStatus = 503;
+  catalogReply = { error: { code: "CATALOG_UNAVAILABLE", message: "Unavailable", fields: {} } };
+  try {
+    const response = await fetch(baseUrl);
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /The product catalog is unavailable right now/);
+    assert.match(html, /Need help planning your system\?/);
+    assert.doesNotMatch(html, /id="published-products"/);
+  } finally {
+    catalogStatus = 200;
+    catalogReply = { count: 0, next: null, previous: null, results: [] };
+  }
+});
+
+test("the production server serves the approved transparent logo", async () => {
+  const response = await fetch(`${baseUrl}/brand/octacam-logo.png`);
+  const image = Buffer.from(await response.arrayBuffer());
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /image\/png/);
+  assert.equal(image.readUInt32BE(16), 1254);
+  assert.equal(image.readUInt32BE(20), 1254);
+  assert.equal(image[25], 6);
+});
+
+test("shared navigation exposes honest, non-indexed destinations without unverified contact links", async () => {
+  const home = await (await fetch(baseUrl)).text();
+  assert.match(home, /aria-label="Storefront"/);
+  assert.match(home, /aria-label="Mobile storefront"/);
+  assert.match(home, /Details pending verification/);
+  assert.doesNotMatch(home, /href="(?:mailto:|tel:|https:\/\/wa\.me\/)/);
+
+  for (const page of plannedPages) {
+    const response = await fetch(`${baseUrl}${page.to}`);
+    const html = await response.text();
+    assert.equal(response.status, 200, page.to);
+    assert.match(response.headers.get("x-robots-tag") ?? "", /noindex/, page.to);
+    assert.match(html, /is coming soon/, page.to);
   }
 });
 

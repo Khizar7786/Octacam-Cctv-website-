@@ -20,7 +20,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
 export default function Foundation({ loaderData }: Route.ComponentProps) {
   return (
-    <section className="space-y-5">
+    <section className="max-w-[var(--reading-max)] space-y-5">
       <h1 className="text-3xl font-semibold">Frontend foundation</h1>
       <p>
         {loaderData.source === "server"

@@ -9,22 +9,51 @@
 **Foundation update, 3 October 2026:** the inventory below preserves the review
 as of 2 October. The requested frontend foundation has since been implemented:
 React Router/TypeScript with SSR enabled, minimal home and `/foundation` routes,
-root error handling and real 404s, Tailwind with neutral tokens, a pinned npm
-lockfile, and documented dev/lint/typecheck/test/build/start commands. The
-shared public API foundation now separates browser and server requests,
-normalizes API errors and pagination, preserves decimal strings, supports
-cancellation, and provides the local `/api/v1/` proxy. It adds no storefront or
-authenticated-session feature. Brand/shadcn/Motion work and the backend
+root error handling and real 404s, a pinned npm lockfile, and documented
+dev/lint/typecheck/test/build/start commands. The shared public API foundation
+separates browser and server requests, normalizes API errors and pagination,
+preserves decimal strings, supports cancellation, and provides the local
+`/api/v1/` proxy. The visual foundation now adds centralized logo-derived
+Tailwind tokens, initial customized shadcn/ui TypeScript source components, and
+the `/visual-foundation` development preview. It adds no storefront or
+authenticated-session feature. Route-specific Motion work and the backend
 contract gaps below remain separate slices. See [current setup](../Readme.md#run-the-frontend-locally).
 
-Current frontend verification passed: lint, typecheck, 13 focused unit tests,
-production build, and six production smoke tests covering SSR, compiled-client
-navigation, server-config isolation, 404s, assets, and a test-only loader
-failure. Three live integration checks exercised the running Django catalog
-through the development proxy, direct SSR, and Django's validation-error
-envelope. A browser surface was not available, so the visual
-Home-to-Foundation navigation remains a manual check; no backend test suite was
-repeated. This update does not change the earlier backend test result.
+**Storefront shell update, 5 October 2026:** the shared responsive header,
+mobile menu, footer, and page layout now expose the specified navigation in
+brand-first order. Unfinished destinations resolve to clearly marked,
+`noindex` development pages. Public contact values are centralized but remain
+unset because no verified WhatsApp, phone, or email details are in the
+repository; policy links also identify missing approved copy. Search, cart
+count, account, catalog, and survey booking behavior are still separate slices.
+
+Storefront shell verification passed: lint, typecheck, 15 focused unit tests,
+production build, and eight production smoke tests covering SSR, the visual
+preview and logo asset, unfinished destinations and contact placeholders,
+compiled-client navigation, server-config isolation, 404s, assets, and a
+test-only loader failure. Three earlier live integration
+checks exercised the running Django catalog through the development proxy,
+direct SSR, and Django's validation-error envelope. Headless Edge review at
+320px, 390px, 768px, 1280px, and 1440px found no horizontal overflow; mobile
+menu/Search disclosure, Escape focus restoration, route focus, keyboard focus,
+and reduced-motion CSS were also checked. No backend test suite was repeated. This
+update does not change the earlier backend test result.
+
+**Homepage update, 5 October 2026:** the homepage now follows UX section 5
+with two provisional code-configured promotions, responsive decorative artwork,
+live copy and homepage-anchor destinations, manual controls, and an image
+fallback. The first promotion and all static sections appear in SSR. Brand and
+category links disclose their unfinished pages. A bounded product preview uses
+only records returned by Django's published-product API and disappears on an
+empty catalog; an API failure leaves the static homepage visible with a status
+message. Development media requests are proxied to Django. The product detail,
+browsing, and survey-booking pages remain later slices. The provisional banner
+artwork/copy needs business approval before launch. The current homepage checks
+add three production scenarios (empty, published, unavailable catalog) and
+bring the production smoke test count to 11; keyboard promotion controls,
+fallback, reduced motion, and phone/tablet/desktop layouts were checked in Edge.
+The Django server was not available for a fresh live-catalog check in this
+slice; the published-record case used a contract-shaped test response.
 
 ## Repository snapshot reviewed on 2 October 2026
 

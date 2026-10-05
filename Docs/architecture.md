@@ -207,7 +207,7 @@ Frontend:
 - pre-rendering for suitable static content
 - REST communication with Django
 
-Exact package versions are pinned in `frontend/package-lock.json`. The frontend foundation now includes React Router Framework Mode with `ssr: true`, TypeScript route generation/checking, Tailwind with neutral shared tokens, placeholder routes, a root error boundary, and lint/test/build/start commands. Storefront features, brand tokens, customized shadcn/ui components, and approved animations remain later slices. See the [frontend readiness review](frontend-readiness.md) for the dated inventory and contract gaps and [README frontend setup](../Readme.md#run-the-frontend-locally) for current commands.
+Exact package versions are pinned in `frontend/package-lock.json`. The frontend foundation includes React Router Framework Mode with `ssr: true`, TypeScript route generation/checking, centralized Tailwind brand tokens, initial customized shadcn/ui source components, a responsive header/footer and mobile menu, placeholder and development-preview routes, a root error boundary, and lint/test/build/start commands. The homepage now renders static responsive promotional artwork and live copy from `app/config/promotions.ts`, brand/category entries, a survey panel, factual reassurance, and up to four records from the public published-product API when available. The first promotion is in SSR HTML; previous/next controls are manual and there is no entrance animation yet. The shared shell points unfinished destinations to explicit `noindex` development pages. Verified public contact details are held centrally in `app/config/storefront.ts`; the fields remain unset until the business owner supplies approved values. Product detail, catalog browsing, cart, account, booking, and policy content remain later slices. See the [frontend readiness review](frontend-readiness.md) for the dated inventory and contract gaps and [README frontend setup](../Readme.md#run-the-frontend-locally) for current commands.
 
 A large global state library is **not** required initially.
 
@@ -215,7 +215,7 @@ Redux must not be introduced unless a later implementation requirement clearly j
 
 ### Styling and motion conventions
 
-Keep shared color, typography, spacing, radius, shadow, and motion tokens in `app/styles/tokens.css`, loaded by `app/styles/app.css`. Tailwind utilities and shadcn/ui component variables must use that shared source rather than duplicate design values. Derive brand colors from the approved logo and verify contrast before fixing token values; no hexadecimal brand values are approved by this decision.
+Keep shared color, typography, spacing, radius, shadow, and motion tokens in `app/styles/tokens.css`, loaded by `app/styles/app.css`. Tailwind utilities and shadcn/ui component variables use that shared source rather than duplicate design values. The approved transparent master is `Logo/OctacamLogo.png`; its dominant electric blue was sampled as `#005ffb` for the primary brand token. The primary/white text pair is 5.21:1 and the focus blue against the light page background is 4.86:1. Derived hover, neutral, and semantic colors remain interface tokens rather than changes to the logo artwork.
 
 Configure shadcn/ui for TypeScript output and keep reusable UI source in `app/components/ui/`. Customize it through the shared tokens and component styles to match OctaCam, preserving semantic HTML, keyboard behavior, and visible focus. The copied components are project-owned code that must be reviewed and maintained.
 

@@ -20,6 +20,10 @@ export default defineConfig(({ command }) => ({
           target: getServerApiOrigin(),
           changeOrigin: false,
         },
+        "/media": {
+          target: getServerApiOrigin(),
+          changeOrigin: false,
+        },
       },
     } : {}),
   },

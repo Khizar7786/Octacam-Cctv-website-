@@ -2,41 +2,127 @@
 @import "./tokens.css";
 
 @theme inline {
+  --spacing: var(--space-1);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--brand-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-info: var(--info);
+  --color-info-surface: var(--info-surface);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-error: var(--error);
+  --color-error-surface: var(--error-surface);
   --font-sans: var(--font-body);
+  --font-mono: var(--font-technical);
+  --radius-sm: var(--oc-radius-sm);
+  --radius-md: var(--oc-radius-md);
+  --radius-lg: var(--oc-radius-lg);
+  --shadow-sm: var(--oc-shadow-sm);
+  --shadow-raised: var(--oc-shadow-raised);
 }
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--background);
+    scroll-behavior: smooth;
+  }
+
   body {
     margin: 0;
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-body);
-    line-height: 1.6;
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
     overflow-wrap: anywhere;
+    text-rendering: optimizeLegibility;
   }
 
   a {
+    color: var(--primary);
+    font-weight: 600;
     text-decoration: underline;
     text-underline-offset: 0.2em;
+    transition: color var(--motion-duration-fast) var(--motion-ease-standard);
+  }
+
+  a:hover {
+    color: var(--brand-hover);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
   }
 
   :focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 4px;
+    outline: var(--focus-width) solid var(--ring);
+    outline-offset: var(--focus-offset);
+  }
+
+  ::selection {
+    background: var(--brand-soft);
+    color: var(--foreground);
   }
 }
 
 .skip-link {
   position: absolute;
+  z-index: 50;
   top: 1rem;
   left: 1rem;
-  padding: 0.5rem 1rem;
-  background: var(--background);
+  min-height: var(--control-height);
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--oc-radius-md);
+  background: var(--card);
+  color: var(--foreground);
   transform: translateY(-200%);
+  transition: transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .skip-link:focus {
   transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

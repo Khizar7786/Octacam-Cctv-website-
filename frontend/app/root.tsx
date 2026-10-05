@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   Link,
   Links,
@@ -6,9 +6,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
   useNavigation,
 } from "react-router";
 import type { Route } from "./+types/root";
+import { Container } from "./components/layout/container";
+import { SiteFooter } from "./components/layout/site-footer";
+import { SiteHeader } from "./components/layout/site-header";
 import { getRouteErrorContent } from "./lib/route-errors";
 import "./styles/app.css";
 
@@ -32,12 +36,11 @@ export function Layout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <a className="skip-link" href="#main-content">Skip to content</a>
-        <div className="mx-auto w-full max-w-2xl px-5 py-10 sm:py-16">
-          <header className="mb-10">
-            <Link className="font-semibold" to="/">OctaCam</Link>
-          </header>
+        <SiteHeader />
+        <Container className="min-h-[45vh] py-8 sm:py-12">
           <main id="main-content" tabIndex={-1}>{children}</main>
-        </div>
+        </Container>
+        <SiteFooter />
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -47,10 +50,22 @@ export function Layout({ children }: { children: ReactNode }) {
 
 export default function App() {
   const navigation = useNavigation();
+  const location = useLocation();
+  const previousPath = useRef(location.pathname);
+
+  useEffect(() => {
+    if (previousPath.current === location.pathname) return;
+    previousPath.current = location.pathname;
+    document.getElementById("main-content")?.focus();
+  }, [location.pathname]);
 
   return (
     <>
-      {navigation.state === "loading" ? <p className="mb-5" role="status">Loading page...</p> : null}
+      {navigation.state === "loading" ? (
+        <p className="mb-5 border-l-4 border-info bg-info-surface px-4 py-3 text-sm" role="status">
+          Loading page...
+        </p>
+      ) : null}
       <Outlet />
     </>
   );
