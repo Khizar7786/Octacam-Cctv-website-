@@ -20,6 +20,12 @@ let output = "";
 let catalogStatus = 200;
 let catalogReply: unknown = { count: 0, next: null, previous: null, results: [] };
 let catalogResponder: ((path: string) => unknown) | null = null;
+const taxonomy = (id: number, name: string, slug: string, is_active = true) => ({
+  id, name, slug, description: "", is_active, sort_order: id,
+  created_at: "2026-10-05T00:00:00Z", updated_at: "2026-10-05T00:00:00Z",
+});
+let brands = [taxonomy(1, "Hikvision", "hikvision"), taxonomy(2, "Dahua", "dahua")];
+const categories = [taxonomy(1, "Cameras", "cameras"), taxonomy(2, "Recorders", "recorders"), taxonomy(3, "Storage", "storage"), taxonomy(4, "Accessories", "accessories")];
 
 before(async () => {
   await access(buildUrl).catch(() => {
@@ -29,6 +35,31 @@ before(async () => {
     if (request.url?.startsWith("/api/v1/catalog/products/")) {
       response.writeHead(catalogStatus, { "Content-Type": "application/json" });
       response.end(JSON.stringify(catalogResponder ? catalogResponder(request.url ?? "") : catalogReply));
+      return;
+    }
+    const url = new URL(request.url ?? "/", "http://localhost");
+    const taxonomyMatch = url.pathname.match(/^\/api\/v1\/catalog\/(brands|categories)\/(?:([^/]+)\/)?$/);
+    if (taxonomyMatch) {
+      const items = (taxonomyMatch[1] === "brands" ? brands : categories).filter((item) => item.is_active);
+      const detail = taxonomyMatch[2] ? items.find((item) => item.slug === taxonomyMatch[2]) : null;
+      const pageNumber = Number(url.searchParams.get("page") ?? "1");
+      const page = taxonomyMatch[2] ? detail : Number.isSafeInteger(pageNumber) && pageNumber > 0 && (pageNumber === 1 || (pageNumber - 1) * 20 < items.length) ? {
+        count: items.length,
+        next: pageNumber * 20 < items.length ? `http://internal-backend:8000${url.pathname}?page=${pageNumber + 1}` : null,
+        previous: pageNumber > 1 ? `http://internal-backend:8000${url.pathname}${pageNumber === 2 ? "" : `?page=${pageNumber - 1}`}` : null,
+        results: items.slice((pageNumber - 1) * 20, pageNumber * 20),
+      } : null;
+      response.writeHead(page ? 200 : 404, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(page ?? { error: { code: "NOT_FOUND", message: "Not found.", fields: {} } }));
+      return;
+    }
+    if (url.pathname === "/api/v1/catalog/filters/") {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({
+        brand: brands.filter((item) => item.is_active).map((item) => ({ value: item.slug, label: item.name })),
+        category: categories.filter((item) => item.is_active).map((item) => ({ value: item.slug, label: item.name })),
+        price: { min: null, max: null }, specifications: [],
+      }));
       return;
     }
     response.writeHead(404, { "Content-Type": "application/json" });
@@ -209,6 +240,101 @@ test("shop handles empty, invalid-page, and catalog-error states without invente
   } finally {
     catalogStatus = 200;
     catalogReply = { count: 0, next: null, previous: null, results: [] };
+  }
+});
+
+test("All Brands and scoped brand/category pages render active data in initial HTML", async () => {
+  const product = {
+    id: 101, brand: { id: 1, name: "Hikvision", slug: "hikvision" },
+    category: { id: 1, name: "Cameras", slug: "cameras" },
+    sku: "CAM-101", slug: "cam-101", name: "Published scope camera", short_description: "Public fixture",
+    regular_price: "12000.00", sale_price: null, selling_price: "12000.00",
+    stock_quantity: 0, is_in_stock: false, primary_image: null,
+  };
+  catalogResponder = (path) => {
+    const query = new URL(path, "http://localhost").searchParams;
+    if (query.get("brand") === "hikvision" || query.get("category") === "cameras") {
+      return query.get("page") === "2"
+        ? { count: 21, next: null, previous: "http://internal-backend:8000/api/v1/catalog/products/?brand=hikvision&category=cameras", results: [product] }
+        : { count: 21, next: "http://internal-backend:8000/api/v1/catalog/products/?page=2&brand=hikvision&category=cameras", previous: null, results: [product] };
+    }
+    return { count: 0, next: null, previous: null, results: [] };
+  };
+  try {
+    const all = await fetch(`${baseUrl}/brands`);
+    const allHtml = (await all.text()).split("<script")[0];
+    assert.equal(all.status, 200);
+    assert.match(allHtml, /All CCTV brands \| OctaCam/);
+    assert.match(allHtml, /2(?:\s|<!-- -->)*brands/);
+    assert.match(allHtml, /href="\/brands\/hikvision"/);
+    assert.match(allHtml, /href="\/brands\/dahua"/);
+
+    const brand = await fetch(`${baseUrl}/brands/hikvision?category=cameras`);
+    const brandHtml = (await brand.text()).split("<script")[0];
+    assert.equal(brand.status, 200);
+    assert.match(brandHtml, /Hikvision CCTV equipment \| OctaCam/);
+    assert.match(brandHtml, /aria-label="Breadcrumb"/);
+    assert.match(brandHtml, /21(?:\s|<!-- -->)*products/);
+    assert.match(brandHtml, /Published scope camera/);
+    assert.match(brandHtml, /Out of stock/);
+    assert.match(brandHtml, /name="category"/);
+    assert.match(brandHtml, /href="\/brands\/hikvision\?category=cameras&amp;page=2"/);
+
+    const category = await fetch(`${baseUrl}/categories/cameras?brand=hikvision`);
+    const categoryHtml = (await category.text()).split("<script")[0];
+    assert.equal(category.status, 200);
+    assert.match(categoryHtml, /Cameras \| OctaCam CCTV equipment/);
+    assert.match(categoryHtml, /name="brand"/);
+    assert.match(categoryHtml, /Published scope camera/);
+    assert.match(categoryHtml, /href="\/categories\/cameras\?brand=hikvision&amp;page=2"/);
+    const next = await fetch(`${baseUrl}/categories/cameras?brand=hikvision&page=2`);
+    const nextHtml = (await next.text()).split("<script")[0];
+    assert.match(nextHtml, /Page(?:\s|<!-- -->)*2/);
+    assert.match(nextHtml, /href="\/categories\/cameras\?brand=hikvision"/);
+  } finally {
+    catalogResponder = null;
+  }
+});
+
+test("active empty taxonomy differs from inactive, unknown, and invalid selections", async () => {
+  brands.push(taxonomy(3, "Empty Brand", "empty-brand"), taxonomy(4, "Hidden Brand", "hidden-brand", false));
+  try {
+    const empty = await fetch(`${baseUrl}/brands/empty-brand`);
+    const emptyHtml = (await empty.text()).split("<script")[0];
+    assert.equal(empty.status, 200);
+    assert.match(emptyHtml, /No published products in this selection/);
+    assert.match(emptyHtml, /0(?:\s|<!-- -->)*products/);
+
+    for (const path of ["/brands/hidden-brand", "/brands/no-such-brand", "/categories/no-such-category"]) {
+      const response = await fetch(`${baseUrl}${path}`);
+      assert.equal(response.status, 404, path);
+      assert.match(await response.text(), /Page not found/);
+    }
+    const invalid = await fetch(`${baseUrl}/brands/hikvision?category=no-such-category`);
+    assert.equal(invalid.status, 200);
+    assert.match(await invalid.text(), /This catalog selection is unavailable/);
+
+    const all = (await (await fetch(`${baseUrl}/brands`)).text()).split("<script")[0];
+    assert.match(all, /href="\/brands\/empty-brand"/);
+    assert.doesNotMatch(all, /href="\/brands\/hidden-brand"/);
+  } finally {
+    brands = brands.filter((brand) => ![3, 4].includes(brand.id));
+  }
+});
+
+test("All Brands follows backend pagination without changing the brand destination", async () => {
+  const additional = Array.from({ length: 19 }, (_, index) => taxonomy(100 + index, `Brand ${index + 1}`, `brand-${index + 1}`));
+  brands.push(...additional);
+  try {
+    const first = (await (await fetch(`${baseUrl}/brands`)).text()).split("<script")[0];
+    assert.match(first, /21(?:\s|<!-- -->)*brands/);
+    assert.match(first, /href="\/brands\?page=2"/);
+    const second = (await (await fetch(`${baseUrl}/brands?page=2`)).text()).split("<script")[0];
+    assert.match(second, /Brand 19/);
+    assert.match(second, /href="\/brands"/);
+    assert.doesNotMatch(second, /Next page/);
+  } finally {
+    brands = brands.filter((brand) => brand.id < 100);
   }
 });
 

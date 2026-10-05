@@ -67,6 +67,18 @@ The shop production checks cover visible initial HTML, a second page, empty
 catalog, invalid URLs, backend errors, sale display, and zero stock; the
 production smoke suite now has 14 checks.
 
+**Brand and category update, 5 October 2026:** `/brands` lists active brands,
+and `/brands/:slug` and `/categories/:slug` server-render scoped published
+products with counts, breadcrumbs, and opposite-taxonomy selection. Pagination
+keeps the selected scope. The shared header and homepage promote Hikvision,
+Dahua, and category links only when their public taxonomy records are active;
+All Brands remains reachable when no brands are active. Active but product-empty
+taxonomies show an empty state, while unknown and inactive detail slugs return
+404. The live local API currently has no active brands or categories, so
+populated and filtered cases are covered by the production API fixtures.
+Search, price/availability/specification filters, sorting, and product detail
+remain separate slices. The global development `noindex` policy still applies.
+
 ## Repository snapshot reviewed on 2 October 2026
 
 | Requirement | What exists | Remaining work |

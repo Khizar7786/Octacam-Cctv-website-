@@ -62,6 +62,35 @@ test("a direct shop request renders the real published catalog state in initial 
   }
 });
 
+test("live brand and category routes agree with active public taxonomy", async () => {
+  const [brandResponse, categoryResponse] = await Promise.all([
+    fetch(`${frontendOrigin}/api/v1/catalog/brands/`, { signal: AbortSignal.timeout(5_000) }),
+    fetch(`${frontendOrigin}/api/v1/catalog/categories/`, { signal: AbortSignal.timeout(5_000) }),
+  ]);
+  assert.equal(brandResponse.status, 200);
+  assert.equal(categoryResponse.status, 200);
+  const brands = await brandResponse.json() as { count: number; results: { name: string; slug: string }[] };
+  const categories = await categoryResponse.json() as { count: number; results: { name: string; slug: string }[] };
+  const allBrands = await fetch(`${frontendOrigin}/brands`, { signal: AbortSignal.timeout(5_000) });
+  const allHtml = (await allBrands.text()).split("<script")[0];
+  assert.equal(allBrands.status, 200);
+  assert.match(allHtml, new RegExp(`${brands.count}(?:\\s|<!-- -->)*brands?`));
+  if (brands.results[0]) {
+    const brand = await fetch(`${frontendOrigin}/brands/${brands.results[0].slug}`, { signal: AbortSignal.timeout(5_000) });
+    assert.equal(brand.status, 200);
+    assert.match(await brand.text(), /Published products/);
+  } else {
+    assert.match(allHtml, /No active brands yet/);
+  }
+  if (categories.results[0]) {
+    const category = await fetch(`${frontendOrigin}/categories/${categories.results[0].slug}`, { signal: AbortSignal.timeout(5_000) });
+    assert.equal(category.status, 200);
+    assert.match(await category.text(), /Published products/);
+  }
+  const unknown = await fetch(`${frontendOrigin}/brands/no-such-brand`, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(unknown.status, 404);
+});
+
 test("the development proxy preserves Django's structured validation error", async () => {
   const client = createApiClient({
     fetch: async (input, init) => fetch(new URL(String(input), frontendOrigin), init),

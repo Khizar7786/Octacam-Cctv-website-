@@ -29,13 +29,6 @@ export const policyLinks = [
 ] as const;
 
 export const plannedPages = [
-  { label: "Hikvision", to: "/brands/hikvision", detail: "The Hikvision brand page is being built." },
-  { label: "Dahua", to: "/brands/dahua", detail: "The Dahua brand page is being built." },
-  { label: "All brands", to: "/brands", detail: "Brand browsing is being built." },
-  { label: "Cameras", to: "/categories/cameras", detail: "The camera category page is being built." },
-  { label: "Recorders", to: "/categories/recorders", detail: "The DVR/NVR recorder category page is being built." },
-  { label: "Storage", to: "/categories/storage", detail: "The surveillance storage category page is being built." },
-  { label: "Accessories", to: "/categories/accessories", detail: "The accessories category page is being built." },
   { label: "Search", to: "/search", detail: "Product and model search is being built." },
   { label: "Cart", to: "/cart", detail: "The cart and its item count are being built." },
   { label: "Account", to: "/login", detail: "Customer sign-in and account screens are being built." },

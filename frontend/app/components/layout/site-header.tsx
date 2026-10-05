@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useRouteLoaderData } from "react-router";
 import { OctacamLogo } from "~/components/brand/octacam-logo";
 import { Container } from "~/components/layout/container";
 import { brandLinks, categoryLinks, policyLinks } from "~/config/storefront";
@@ -48,7 +48,22 @@ function PlannedLink({
   );
 }
 
+function CatalogLink({ label, to, compact = false, onClick }: { label: string; to: string; compact?: boolean; onClick?: () => void }) {
+  return (
+    <Link
+      className={compact
+        ? "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-foreground no-underline hover:bg-accent"
+        : "inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-foreground no-underline hover:bg-accent"}
+      onClick={onClick}
+      to={to}
+    >{label}</Link>
+  );
+}
+
 export function SiteHeader() {
+  const active = useRouteLoaderData("root") as { brandLinks: typeof brandLinks[number][]; categoryLinks: typeof categoryLinks[number][] } | undefined;
+  const visibleBrandLinks = active?.brandLinks ?? brandLinks.filter((link) => link.to === "/brands");
+  const visibleCategoryLinks = active?.categoryLinks ?? [];
   const [openPanel, setOpenPanel] = useState<Panel>(null);
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
@@ -157,9 +172,9 @@ export function SiteHeader() {
       <div className="hidden border-t border-border xl:block">
         <Container className="flex min-h-14 items-center justify-between gap-4">
           <nav aria-label="Storefront" className="flex flex-wrap items-center gap-x-1">
-            {brandLinks.map((link) => <PlannedLink key={link.to} {...link} />)}
+            {visibleBrandLinks.map((link) => <CatalogLink key={link.to} {...link} />)}
             <span aria-hidden="true" className="mx-2 h-5 border-l border-border" />
-            {categoryLinks.map((link) => <PlannedLink key={link.to} {...link} />)}
+            {visibleCategoryLinks.length ? visibleCategoryLinks.map((link) => <CatalogLink key={link.to} {...link} />) : <CatalogLink label="Shop all products" to="/shop" />}
           </nav>
           <PlannedLink label="Free Lahore site survey" to="/surveys" />
         </Container>
@@ -186,11 +201,11 @@ export function SiteHeader() {
           <nav aria-label="Mobile storefront" className="grid gap-5">
             <div>
               <h3 className="px-3 text-xs font-bold text-muted-foreground">Brands</h3>
-              {brandLinks.map((link) => <PlannedLink compact key={link.to} onClick={() => setOpenPanel(null)} {...link} />)}
+              {visibleBrandLinks.map((link) => <CatalogLink compact key={link.to} onClick={() => setOpenPanel(null)} {...link} />)}
             </div>
             <div>
               <h3 className="px-3 text-xs font-bold text-muted-foreground">Categories</h3>
-              {categoryLinks.map((link) => <PlannedLink compact key={link.to} onClick={() => setOpenPanel(null)} {...link} />)}
+              {visibleCategoryLinks.length ? visibleCategoryLinks.map((link) => <CatalogLink compact key={link.to} onClick={() => setOpenPanel(null)} {...link} />) : <CatalogLink compact label="Shop all products" onClick={() => setOpenPanel(null)} to="/shop" />}
             </div>
             <div className="border-t border-border pt-3">
               {[

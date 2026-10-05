@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useLoaderData } from "react-router";
+import { Link, useLoaderData, useRouteLoaderData } from "react-router";
 import { ProductCard } from "~/components/catalog/product-card";
 import { PromoCarousel } from "~/components/home/promo-carousel";
 import { brandLinks, categoryLinks } from "~/config/storefront";
@@ -36,6 +36,9 @@ function SectionHeading({ eyebrow, title, id, children }: { eyebrow: string; tit
 
 export default function Home() {
   const { products, catalogUnavailable } = useLoaderData<typeof loader>();
+  const active = useRouteLoaderData("root") as { brandLinks: typeof brandLinks[number][]; categoryLinks: typeof categoryLinks[number][]; brandsUnavailable: boolean; categoriesUnavailable: boolean } | undefined;
+  const visibleBrandLinks = active?.brandLinks ?? brandLinks.filter((link) => link.to === "/brands");
+  const visibleCategoryLinks = active?.categoryLinks ?? [];
 
   return (
     <div className="space-y-16 sm:space-y-20">
@@ -44,25 +47,27 @@ export default function Home() {
       <section aria-labelledby="brands-heading" id="brands">
         <SectionHeading eyebrow="Browse by brand" id="brands-heading" title="Start with a brand" />
         <div className="grid gap-4 sm:grid-cols-3">
-          {brandLinks.map(({ label, to }) => (
+          {visibleBrandLinks.map(({ label, to }) => (
             <Link className="flex min-h-28 items-center justify-between gap-4 rounded-lg border border-border bg-card p-6 no-underline shadow-sm hover:border-primary" key={to} to={to}>
               <span className="text-xl font-bold text-foreground">{label}</span>
-              <span className="text-xs font-semibold text-muted-foreground">Browse page coming soon</span>
+              <span className="text-xs font-semibold text-primary">Browse brands</span>
             </Link>
           ))}
         </div>
+        {active?.brandsUnavailable ? <p className="mt-4 text-sm text-muted-foreground" role="status">Brand information is unavailable right now.</p> : null}
       </section>
 
       <section aria-labelledby="categories-heading" id="categories">
         <SectionHeading eyebrow="Shop by category" id="categories-heading" title="Find the right type of equipment" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {categoryLinks.map(({ label, to }) => (
+          {visibleCategoryLinks.map(({ label, to }) => (
             <Link className="flex min-h-36 flex-col justify-between rounded-lg border border-border bg-card p-6 no-underline shadow-sm hover:border-primary" key={to} to={to}>
               <span className="text-xl font-bold text-foreground">{label === "Recorders" ? "DVR/NVR recorders" : label === "Storage" ? "Surveillance storage" : label}</span>
-              <span className="text-xs font-semibold text-muted-foreground">Browse page coming soon</span>
+              <span className="text-xs font-semibold text-primary">Browse products</span>
             </Link>
           ))}
         </div>
+        {visibleCategoryLinks.length === 0 ? <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground" role="status">{active?.categoriesUnavailable ? "Equipment categories are unavailable right now." : "No active equipment categories are available yet."}</p> : null}
         <Link className="mt-5 inline-flex min-h-11 items-center text-sm" to="/shop">Browse all published products</Link>
       </section>
 
