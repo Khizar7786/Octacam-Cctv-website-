@@ -12,7 +12,7 @@ function PromoArtwork({
   const [failed, setFailed] = useState(false);
 
   return (
-    <div className="relative flex min-h-56 items-center justify-center overflow-hidden bg-accent sm:min-h-80 lg:min-h-full">
+    <div className="relative flex min-h-48 items-center justify-center overflow-hidden bg-accent sm:min-h-64 lg:min-h-full">
       <div className="relative rounded-lg border border-primary/20 bg-card/90 px-6 py-4 text-xl font-bold text-foreground">
         Octa<span className="text-primary">Cam</span>
       </div>
@@ -44,14 +44,14 @@ export function PromoCarousel() {
   return (
     <section aria-label="Promotions" className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
-        <div className="flex flex-col justify-center p-6 sm:p-10 lg:min-h-[28rem] lg:p-14">
-          <p className="mb-4 text-sm font-semibold text-primary">OctaCam · CCTV equipment</p>
+        <div className="flex flex-col justify-center p-5 sm:p-8 lg:min-h-[22rem] lg:p-10">
+          <p className="mb-3 text-sm font-semibold text-primary">OctaCam · CCTV equipment</p>
           <h1 className="max-w-xl text-[length:var(--font-size-display)] font-bold leading-[var(--line-height-tight)] tracking-[-0.045em]">
             {promotion.title}
           </h1>
-          <p className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg">{promotion.description}</p>
+          <p className="mt-3 max-w-lg text-base text-muted-foreground sm:text-lg">{promotion.description}</p>
           <Link
-            className="mt-8 inline-flex min-h-11 w-fit items-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground no-underline hover:bg-primary-hover hover:text-primary-foreground"
+            className="mt-5 inline-flex min-h-11 w-fit items-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground no-underline hover:bg-primary-hover hover:text-primary-foreground"
             to={promotion.to}
           >
             {promotion.actionLabel}
@@ -66,7 +66,7 @@ export function PromoCarousel() {
       </div>
 
       {promotions.length > 1 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 sm:px-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-2 sm:px-8 lg:px-10">
           <p aria-live="polite" className="text-sm text-muted-foreground">
             Promotion {activeIndex + 1} of {promotions.length}: <span className="font-semibold text-foreground">{promotion.title}</span>
           </p>

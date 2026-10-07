@@ -29,6 +29,18 @@
   --input: #8795a8;
   --ring: var(--brand);
 
+  /* Header surfaces: a dark service strip and navy navigation beside the white logo row. */
+  --header-strip: #100b24;
+  --navigation: #0e2a50;
+  --navigation-hover: #20476b;
+  --navigation-foreground: #ffffff;
+  --navigation-focus: #a9c9ff;
+
+  /* Footer uses the same navy family, with readable secondary text. */
+  --footer: var(--navigation);
+  --footer-foreground: var(--navigation-foreground);
+  --footer-muted: #c4d0df;
+
   --info: #0758ce;
   --info-surface: #edf5ff;
   --success: #176b45;
@@ -41,7 +53,7 @@
   /* Typography: local system faces avoid font-loading shifts during SSR. */
   --font-body: "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
   --font-technical: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  --font-size-display: clamp(2.25rem, 7vw, 4.75rem);
+  --font-size-display: clamp(2rem, 4.5vw, 3.5rem);
   --font-size-heading: clamp(1.65rem, 3.5vw, 2.5rem);
   --font-size-body: 1rem;
   --line-height-tight: 1.08;
@@ -59,7 +71,11 @@
   --space-24: 6rem;
 
   --control-height: 2.75rem;
-  --page-max: 76rem;
+  /* Narrow shared gutters preserve the full-width storefront without edge-flush text. */
+  --page-gutter: clamp(0.75rem, 2vw, 1.25rem);
+  --header-search-max: 42rem;
+  --footer-gutter: clamp(1.25rem, 3vw, 2.5rem);
+  --footer-radius: 2rem;
   --reading-max: 43rem;
   --radius: 0.625rem;
   --oc-radius-sm: 0.375rem;

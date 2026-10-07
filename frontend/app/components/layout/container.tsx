@@ -10,8 +10,8 @@ export const Container = forwardRef<HTMLDivElement, ContainerProps>(
     <div
       ref={ref}
       className={cn(
-        "mx-auto w-full px-4 sm:px-6 lg:px-8",
-        size === "reading" ? "max-w-[var(--reading-max)]" : "max-w-[var(--page-max)]",
+        "min-w-0 w-full px-[var(--page-gutter)]",
+        size === "reading" && "mx-auto max-w-[var(--reading-max)]",
         className,
       )}
       {...props}

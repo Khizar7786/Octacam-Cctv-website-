@@ -24,6 +24,14 @@
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-header-strip: var(--header-strip);
+  --color-navigation: var(--navigation);
+  --color-navigation-hover: var(--navigation-hover);
+  --color-navigation-foreground: var(--navigation-foreground);
+  --color-navigation-focus: var(--navigation-focus);
+  --color-footer: var(--footer);
+  --color-footer-foreground: var(--footer-foreground);
+  --color-footer-muted: var(--footer-muted);
   --color-info: var(--info);
   --color-info-surface: var(--info-surface);
   --color-success: var(--success);

@@ -219,6 +219,8 @@ Keep shared color, typography, spacing, radius, shadow, and motion tokens in `ap
 
 Configure shadcn/ui for TypeScript output and keep reusable UI source in `app/components/ui/`. Customize it through the shared tokens and component styles to match OctaCam, preserving semantic HTML, keyboard behavior, and visible focus. The copied components are project-owned code that must be reviewed and maintained.
 
+The owner's October 2026 visual refinements retain a full-width shell with narrow responsive side gutters and compact homepage spacing. Header service/navigation colors, footer surface/text colors, footer gutter/radius, and the centered desktop search width are owned by `app/styles/tokens.css`. The footer aliases the navigation navy and white foreground so both stay consistent; secondary footer text has its own contrast-tested token. Its logo is the unchanged approved PNG on a white panel. These presentation changes do not alter storefront behavior or introduce dependencies.
+
 Motion is optional visual polish within the stated scope. Essential homepage content, navigation, promotional copy, and calls to action must be visible in the initial server-rendered output and before hydration; never hide them until an entrance animation or scroll trigger runs. Respect reduced-motion preferences in both Motion and CSS by removing nonessential movement. Promotional banners remain static content with manual controls, one visible at a time and no auto-advance. Use CSS for simple hover/focus transitions, keeping focus and state feedback immediate.
 
 ### Reasons and trade-offs

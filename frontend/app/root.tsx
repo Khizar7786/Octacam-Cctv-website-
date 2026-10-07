@@ -74,7 +74,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <body>
         <a className="skip-link" href="#main-content">Skip to content</a>
         <SiteHeader />
-        <Container className="min-h-[45vh] py-8 sm:py-12">
+        <Container className="min-h-[45vh] py-4 sm:py-6">
           <main id="main-content" tabIndex={-1}>{children}</main>
         </Container>
         <SiteFooter />

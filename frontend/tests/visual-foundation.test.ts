@@ -7,10 +7,14 @@ const frontendRoot = fileURLToPath(new URL("..", import.meta.url));
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 const tokens = readFileSync(`${frontendRoot}/app/styles/tokens.css`, "utf8");
 
-function colorToken(name: string) {
-  const match = tokens.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6});`));
-  assert.ok(match, `Expected a six-digit color token named --${name}`);
-  return match[1];
+function colorToken(name: string): string {
+  const match = tokens.match(new RegExp(`--${name}:\\s*([^;]+);`));
+  assert.ok(match, `Expected a color token named --${name}`);
+  const value = match[1].trim();
+  const alias = value.match(/^var\(--([\w-]+)\)$/);
+  if (alias) return colorToken(alias[1]);
+  assert.match(value, /^#[0-9a-fA-F]{6}$/, `Expected a six-digit color value for --${name}`);
+  return value;
 }
 
 function relativeLuminance(hex: string) {
@@ -48,6 +52,14 @@ test("text and focus color pairs meet their WCAG contrast targets", () => {
     ["warning", "warning-surface", 4.5],
     ["error", "error-surface", 4.5],
     ["brand", "background", 3],
+    ["navigation-foreground", "header-strip", 4.5],
+    ["navigation-foreground", "navigation", 4.5],
+    ["navigation-foreground", "navigation-hover", 4.5],
+    ["navigation-focus", "navigation", 3],
+    ["navigation-focus", "navigation-hover", 3],
+    ["footer-foreground", "footer", 4.5],
+    ["footer-muted", "footer", 4.5],
+    ["navigation-focus", "footer", 3],
   ] as const;
 
   for (const [foreground, background, minimum] of pairs) {

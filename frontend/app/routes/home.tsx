@@ -26,7 +26,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 function SectionHeading({ eyebrow, title, id, children }: { eyebrow: string; title: string; id: string; children?: ReactNode }) {
   return (
-    <div className="mb-6 max-w-2xl">
+    <div className="mb-4 max-w-2xl">
       <p className="text-sm font-bold text-primary">{eyebrow}</p>
       <h2 className="mt-2 text-[length:var(--font-size-heading)] font-bold leading-tight tracking-tight" id={id}>{title}</h2>
       {children ? <p className="mt-2 text-muted-foreground">{children}</p> : null}
@@ -41,14 +41,14 @@ export default function Home() {
   const visibleCategoryLinks = active?.categoryLinks ?? [];
 
   return (
-    <div className="space-y-16 sm:space-y-20">
+    <div className="space-y-8 sm:space-y-10">
       <PromoCarousel />
 
       <section aria-labelledby="brands-heading" id="brands">
         <SectionHeading eyebrow="Browse by brand" id="brands-heading" title="Start with a brand" />
         <div className="grid gap-4 sm:grid-cols-3">
           {visibleBrandLinks.map(({ label, to }) => (
-            <Link className="flex min-h-28 items-center justify-between gap-4 rounded-lg border border-border bg-card p-6 no-underline shadow-sm hover:border-primary" key={to} to={to}>
+            <Link className="flex min-h-24 items-center justify-between gap-4 rounded-lg border border-border bg-card p-5 no-underline shadow-sm hover:border-primary" key={to} to={to}>
               <span className="text-xl font-bold text-foreground">{label}</span>
               <span className="text-xs font-semibold text-primary">Browse brands</span>
             </Link>
@@ -61,7 +61,7 @@ export default function Home() {
         <SectionHeading eyebrow="Shop by category" id="categories-heading" title="Find the right type of equipment" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {visibleCategoryLinks.map(({ label, to }) => (
-            <Link className="flex min-h-36 flex-col justify-between rounded-lg border border-border bg-card p-6 no-underline shadow-sm hover:border-primary" key={to} to={to}>
+            <Link className="flex min-h-28 flex-col justify-between rounded-lg border border-border bg-card p-5 no-underline shadow-sm hover:border-primary" key={to} to={to}>
               <span className="text-xl font-bold text-foreground">{label === "Recorders" ? "DVR/NVR recorders" : label === "Storage" ? "Surveillance storage" : label}</span>
               <span className="text-xs font-semibold text-primary">Browse products</span>
             </Link>
@@ -86,7 +86,7 @@ export default function Home() {
         </p>
       ) : null}
 
-      <section aria-labelledby="survey-heading" className="rounded-lg border border-border bg-accent p-6 sm:p-10" id="lahore-survey">
+      <section aria-labelledby="survey-heading" className="rounded-lg border border-border bg-accent p-5 sm:p-8" id="lahore-survey">
         <p className="text-sm font-bold text-primary">Free Lahore site survey</p>
         <h2 className="mt-2 text-[length:var(--font-size-heading)] font-bold leading-tight" id="survey-heading">Need help planning your system?</h2>
         <p className="mt-3 max-w-2xl text-muted-foreground">A Lahore customer can request a free site survey without buying equipment. Installation is discussed, quoted, and scheduled separately after the survey.</p>
