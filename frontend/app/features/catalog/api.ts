@@ -41,6 +41,7 @@ export interface PublicProduct {
   stock_quantity: number;
   is_in_stock: boolean;
   primary_image: ProductImage | null;
+  secondary_image: ProductImage | null;
 }
 
 export interface ProductSpecification {
@@ -149,6 +150,10 @@ function parseProduct(value: unknown): PublicProduct {
     primary_image: product.primary_image === null
       ? null
       : parseImage(product.primary_image, "product.primary_image"),
+    // Older API deployments can omit this additive preview field during rollout.
+    secondary_image: product.secondary_image == null
+      ? null
+      : parseImage(product.secondary_image, "product.secondary_image"),
   };
 }
 

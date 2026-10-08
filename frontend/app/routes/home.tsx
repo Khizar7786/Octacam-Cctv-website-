@@ -17,7 +17,7 @@ export function meta() {
 export async function loader({ request }: Route.LoaderArgs) {
   try {
     const page = await getPublicProducts(serverApiClient, { signal: request.signal });
-    return { products: page.results.slice(0, 4), catalogUnavailable: false };
+    return { products: page.results.slice(0, 5), catalogUnavailable: false };
   } catch (error) {
     if (request.signal.aborted) throw error;
     return { products: [] as PublicProduct[], catalogUnavailable: true };
@@ -73,8 +73,8 @@ export default function Home() {
 
       {products.length > 0 ? (
         <section aria-labelledby="products-heading" id="published-products">
-          <SectionHeading eyebrow="From the catalog" id="products-heading" title="Published equipment">Current records from the public catalog. Product detail pages are coming soon.</SectionHeading>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <SectionHeading eyebrow="From the catalog" id="products-heading" title="Published equipment">Explore current products, prices, and specifications.</SectionHeading>
+          <div className="product-grid">
             {products.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         </section>

@@ -208,7 +208,7 @@ Frontend:
 - pre-rendering for suitable static content
 - REST communication with Django
 
-Exact package versions are pinned in `frontend/package-lock.json`. The frontend foundation includes React Router Framework Mode with `ssr: true`, TypeScript route generation/checking, centralized Tailwind brand tokens, initial customized shadcn/ui source components, a responsive header/footer and mobile menu, placeholder and development-preview routes, a root error boundary, and lint/test/build/start commands. The homepage renders static responsive promotional artwork and live copy from `app/config/promotions.ts`, active brand/category entries, a survey panel, factual reassurance, and up to four records from the public published-product API when available. The first promotion is in SSR HTML; previous/next controls are manual and there is no entrance animation yet. `/shop`, `/brands`, `/brands/:slug`, and `/categories/:slug` server-render public catalog data through the shared API client. Brand/category pages show scoped product counts and let buyers select the opposite taxonomy; product and taxonomy pagination preserve the route scope. Active taxonomy details with no published products show empty states, while inactive and unknown detail slugs return 404. Shared product cards present exact model/SKU, decimal PKR price, valid sale comparison, and stock text. The shared shell points unfinished destinations to explicit `noindex` development pages and shows every active public brand and featured category links. The root SSR loader follows all validated brand pages, rejects cyclic/invalid pagination, and preserves backend ordering; a brand-fetch failure retains All brands with the existing unavailable state. Verified public contact details are held centrally in `app/config/storefront.ts`; the fields remain unset until the business owner supplies approved values. Public shop, search, brand, and category pages now use URL-backed name/model search, basic brand/category/PKR-price/availability filters, and relevance or price sorting; Django remains authoritative for matches, selling prices, and stock. Category-scoped technical filters now use Django specification metadata for choice, boolean, integer-range, and decimal-range controls, with exact spec_* URL parameters and category-change cleanup. Published product details now render at runtime from Django with images, descriptions, typed specifications, warranty text, current PKR price and stock, and a disabled cart handoff; cart, account, booking, and policy content remain later slices. See the [frontend readiness review](frontend-readiness.md) for the dated inventory and contract gaps and [README frontend setup](../Readme.md#run-the-frontend-locally) for current commands.
+Exact package versions are pinned in `frontend/package-lock.json`. The frontend foundation includes React Router Framework Mode with `ssr: true`, TypeScript route generation/checking, centralized Tailwind brand tokens, initial customized shadcn/ui source components, a responsive header/footer and mobile menu, placeholder and development-preview routes, a root error boundary, and lint/test/build/start commands. The homepage renders static responsive promotional artwork and live copy from `app/config/promotions.ts`, active brand/category entries, a survey panel, factual reassurance, and up to five records from the public published-product API when available. The first promotion is in SSR HTML; previous/next controls are manual and there is no entrance animation yet. `/shop`, `/brands`, `/brands/:slug`, and `/categories/:slug` server-render public catalog data through the shared API client. Brand/category pages show scoped product counts and let buyers select the opposite taxonomy; product and taxonomy pagination preserve the route scope. Active taxonomy details with no published products show empty states, while inactive and unknown detail slugs return 404. Shared product cards present the product name, decimal PKR price, and valid sale comparison; separate brand, model/SKU, and stock rows were removed by the owner's 8 October 2026 visual refinement. Product detail pages retain those facts. The shared shell points unfinished destinations to explicit `noindex` development pages and shows every active public brand and featured category links. The root SSR loader follows all validated brand pages, rejects cyclic/invalid pagination, and preserves backend ordering; a brand-fetch failure retains All brands with the existing unavailable state. Verified public contact details are held centrally in `app/config/storefront.ts`; the fields remain unset until the business owner supplies approved values. Public shop, search, brand, and category pages now use URL-backed name/model search, basic brand/category/PKR-price/availability filters, and relevance or price sorting; Django remains authoritative for matches, selling prices, and stock. Category-scoped technical filters now use Django specification metadata for choice, boolean, integer-range, and decimal-range controls, with exact spec_* URL parameters and category-change cleanup. Published product details now render at runtime from Django with images, descriptions, typed specifications, warranty text, current PKR price and stock, and a disabled cart handoff; cart, account, booking, and policy content remain later slices. See the [frontend readiness review](frontend-readiness.md) for the dated inventory and contract gaps and [README frontend setup](../Readme.md#run-the-frontend-locally) for current commands.
 
 A large global state library is **not** required initially.
 
@@ -227,6 +227,8 @@ The owner's October 2026 visual refinements retain a full-width shell with narro
 Motion is optional visual polish within the stated scope. Essential homepage content, navigation, promotional copy, and calls to action must be visible in the initial server-rendered output and before hydration; never hide them until an entrance animation or scroll trigger runs. Respect reduced-motion preferences in both Motion and CSS by removing nonessential movement. Promotional banners remain static content with manual controls, one visible at a time and no auto-advance. Use CSS for simple hover/focus transitions, keeping focus and state feedback immediate.
 
 The owner's 8 October 2026 filter refinement also permits a user-triggered CSS slide-in for the mobile catalog drawer. `app/styles/catalog.css` owns the scoped catalog control/rail/drawer styles; dimensions, backdrop, shadow, and animation duration use shared tokens. Native selects retain keyboard behavior and accessible labels; price and technical-range inputs preserve exact string values. The drawer retains focus containment and scroll locking, closes at the desktop breakpoint, and removes its entrance animation under reduced motion. No animation library or new API behavior is added, and the desktop filters remain present in SSR without an entrance effect.
+
+Product cards use shared size, title, image-radius, and contrast-tested sale-badge tokens and the scoped catalog stylesheet. Their image/text content is a single accessible React Router link; the grid accommodates the filter rail and never stretches a sparse result set into oversized cards. CSS handles the loaded secondary-image fade on fine-pointer hover and keyboard focus; reduced motion removes the fade, and no initial card entrance animation hides SSR content.
 
 ### Reasons and trade-offs
 
@@ -1025,9 +1027,9 @@ id
 name
 slug
 description
+logo optional
 is_active
 sort_order
-logo optional
 created_at
 updated_at
 ```
@@ -1043,11 +1045,11 @@ Inactive brands do not appear publicly.
 
 Prefer deactivation over deleting a brand referenced by products or historical data.
 
----
-
 Brand logos are optional `ImageField` references under `brands/`. Existing staff brand POST/PATCH endpoints accept JSON, multipart form data, and form-encoded fields. Multipart `logo` uploads accept PNG, JPEG, or WebP up to 2 MB, reuse the product image decoder/dimension limits and metadata removal, and receive unique storage keys rather than client filenames. JSON `logo: null` or `remove_logo: true` removes a logo; multipart callers use `remove_logo=true`. Uploading and removing in one request is rejected. Omitting both fields retains the current logo.
 
 Public and staff brand responses expose nullable `logo_url` from the field's configured storage; upload/removal inputs are write-only. `save_brand` locks the brand for updates and saves taxonomy/logo changes together. Old-file deletion runs only after commit; a failed database save cleans up its new upload. As with existing product-image uploads, a rollback in an enclosing transaction can leave an unreferenced new file, and a storage deletion failure is logged without undoing the committed database change. The previous referenced file is retained on rollback. No filesystem paths or storage provider are hardcoded. This slice implements the backend contract; storefront logo rendering and staff upload controls remain later frontend work.
+
+---
 
 # 20. Category
 
@@ -1156,7 +1158,7 @@ Suggested constraint:
 UNIQUE(product_id, sort_order)
 ```
 
-The lowest sort order acts as the primary image.
+The lowest sort order acts as the primary image. Public list/detail serializers also expose `secondary_image`, the second image in the existing `(sort_order, id)` order, or null when fewer than two exist. It uses the same image metadata shape as `primary_image` and the already-prefetched image relation, avoiding per-card detail requests and extra database queries. This additive preview field supports the owner-approved 8 October 2026 card hover refinement and requires no database migration. The frontend accepts an omitted field as null during API rollout; failed or unavailable previews preserve the primary image.
 
 Avoid separate `is_primary` state unless a later requirement needs it.
 

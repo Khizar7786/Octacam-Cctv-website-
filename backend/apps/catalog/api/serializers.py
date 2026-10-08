@@ -284,12 +284,13 @@ class PublicProductListSerializer(serializers.ModelSerializer):
     selling_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     is_in_stock = serializers.SerializerMethodField()
     primary_image = ProductImageSerializer(read_only=True, allow_null=True)
+    secondary_image = ProductImageSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Product
         fields = (
             "id", "brand", "category", "sku", "slug", "name", "short_description", "regular_price",
-            "sale_price", "selling_price", "stock_quantity", "is_in_stock", "primary_image",
+            "sale_price", "selling_price", "stock_quantity", "is_in_stock", "primary_image", "secondary_image",
         )
 
     def get_is_in_stock(self, obj) -> bool:

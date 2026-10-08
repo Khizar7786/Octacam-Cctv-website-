@@ -143,3 +143,14 @@ test("requested quantity stays within the stock currently known from Django", ()
   assert.equal(clampQuantity("2", 3), 2);
   assert.equal(clampQuantity("9", 0), 0);
 });
+
+test("list previews preserve image metadata and tolerate older API responses", async () => {
+  const secondary_image = { id: 9, image_url: "/media/products/back.webp", alt_text: "Rear view", sort_order: 5, width: 640, height: 480, created_at: "2026-10-08T00:00:00Z" };
+  for (const item of [product, { ...product, secondary_image: null }, { ...product, secondary_image }]) {
+    const client = createApiClient({ fetch: async () => Response.json({ count: 1, next: null, previous: null, results: [item] }) });
+    const page = await getPublicProducts(client);
+    assert.deepEqual(page.results[0].secondary_image, "secondary_image" in item ? item.secondary_image : null);
+  }
+  const invalid = createApiClient({ fetch: async () => Response.json({ count: 1, next: null, previous: null, results: [{ ...product, secondary_image: { ...secondary_image, width: 0 } }] }) });
+  await assert.rejects(getPublicProducts(invalid), (error: unknown) => error instanceof ApiError && error.code === "UNEXPECTED_API_RESPONSE");
+});

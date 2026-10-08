@@ -191,6 +191,10 @@ test("shop renders published catalog cards and backend pagination in initial HTM
       id: 9, image_url: "/media/products/recorder.webp", alt_text: "Front of recorder",
       sort_order: 0, width: 640, height: 480, created_at: "2026-10-05T00:00:00Z",
     },
+    secondary_image: {
+      id: 10, image_url: "/media/products/recorder-back.webp", alt_text: "Rear of recorder",
+      sort_order: 4, width: 640, height: 480, created_at: "2026-10-05T00:00:00Z",
+    },
   };
   const remainingFirstPage = Array.from({ length: 18 }, (_, index) => ({
     ...saleProduct,
@@ -206,13 +210,25 @@ test("shop renders published catalog cards and backend pagination in initial HTM
     assert.equal(firstResponse.status, 200);
     assert.match(first, /Published sale camera/);
     assert.match(first, /Published zero-stock recorder/);
-    assert.match(first, /Model\/SKU:(?:\s|<!-- -->)*CAM-11/);
+    assert.doesNotMatch(first, /Model\/SKU:/);
     assert.match(first, /PKR(?:\s|<!-- -->)*9999\.00/);
     assert.match(first, /Regular price:/);
     assert.equal((first.match(/<s>/g) ?? []).length, 1, "only the lower valid sale has a struck regular price");
-    assert.match(first, /Out of stock/);
     assert.match(first, /Image unavailable/);
     assert.match(first, /alt="Front of recorder"/);
+    const recorderCard = [...first.matchAll(/<article\b[^>]*>(.*?)<\/article>/gs)].find((match) => match[1].includes("Published zero-stock recorder"))?.[1];
+    assert.ok(recorderCard);
+    assert.doesNotMatch(recorderCard, /Model\/SKU:|>Out of stock<|>In stock<|>Hikvision</);
+    assert.doesNotMatch(recorderCard, /product-sale-badge/);
+    const saleCard = [...first.matchAll(/<article\b[^>]*>(.*?)<\/article>/gs)].find((match) => match[1].includes("Published sale camera"))?.[1];
+    assert.ok(saleCard);
+    assert.match(saleCard, /product-sale-badge/);
+    const link = recorderCard.match(/<a\b[^>]*href="\/products\/drv-12"[^>]*>(.*?)<\/a>/s)?.[1];
+    assert.ok(link, "one product link wraps the image and text before hydration");
+    assert.match(link, /src="\/media\/products\/recorder.webp"/);
+    assert.match(link, /src="\/media\/products\/recorder-back.webp"/);
+    assert.match(link, /<h3[^>]*>Published zero-stock recorder<\/h3>/);
+    assert.equal((recorderCard.match(/<a\b/g) ?? []).length, 1);
     assert.match(first, /href="\/shop\?page=2"/);
     assert.doesNotMatch(first, /Free shipping|Warranty included|Add to cart/);
 
@@ -300,7 +316,7 @@ test("search SSR preserves query, filters, sort, and scope across product pages"
     assert.match(firstHtml, /Search results for DS-2CE \| OctaCam/);
     assert.match(firstHtml, /Results for “DS-2CE”/);
     assert.match(firstHtml, /Published camera model/);
-    assert.match(firstHtml, /Model\/SKU:(?:\s|<!-- -->)*DS-2CE/);
+    assert.doesNotMatch(firstHtml, /Model\/SKU:/);
     assert.match(firstHtml, /21(?:\s|<!-- -->)*products/);
     assert.match(firstHtml, /Remove Brand: Hikvision filter/);
     assert.match(firstHtml, /Remove Category: Cameras filter/);
@@ -452,7 +468,7 @@ test("All Brands and scoped brand/category pages render active data in initial H
     assert.match(brandHtml, /aria-label="Breadcrumb"/);
     assert.match(brandHtml, /21(?:\s|<!-- -->)*products/);
     assert.match(brandHtml, /Published scope camera/);
-    assert.match(brandHtml, /Out of stock/);
+    assert.match(brandHtml, /<option value="out_of_stock"[^>]*>Out of stock<\/option>/);
     assert.match(brandHtml, /name="category"/);
     assert.match(brandHtml, /href="\/brands\/hikvision\?category=cameras&amp;page=2"/);
 
@@ -646,12 +662,12 @@ test("homepage shows only genuine public catalog records with server-provided mo
     }],
   };
   try {
-    const html = await (await fetch(baseUrl)).text();
+    const html = (await (await fetch(baseUrl)).text()).split("<script")[0];
     assert.match(html, /id="published-products"/);
     assert.match(html, /Published camera/);
-    assert.match(html, /MODEL-7/);
+    assert.doesNotMatch(html, /MODEL-7|Model\/SKU:/);
     assert.match(html, /PKR(?:\s|<!-- -->)*15000\.00/);
-    assert.match(html, /Out of stock/);
+    assert.doesNotMatch(html, /Out of stock/);
     assert.match(html, /Image unavailable/);
     assert.doesNotMatch(html, /Add to cart/);
   } finally {

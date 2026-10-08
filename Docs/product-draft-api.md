@@ -169,3 +169,7 @@ Use the IDs returned by your own API calls rather than assuming the example IDs 
 ```powershell
 python manage.py test apps.catalog --settings=config.settings.test
 ```
+
+## Product card image previews
+
+Public product list and detail responses include `primary_image` and `secondary_image`. Each is either null or the existing image metadata object (`id`, `image_url`, `alt_text`, `sort_order`, `width`, `height`, `created_at`). These are the first and second images ordered by `sort_order`, then `id`; gaps in sort order do not matter. With zero images both are null, and with one image only `secondary_image` is null. Reordering or deleting images updates these previews. The frontend uses the second image for card hover/focus and the detail endpoint still includes the full `images` gallery. Only genuine published product records under active brands/categories remain public.

@@ -49,6 +49,7 @@ test("text and focus color pairs meet their WCAG contrast targets", () => {
     ["muted-foreground", "card", 4.5],
     ["secondary-foreground", "card", 4.5],
     ["accent-foreground", "accent", 4.5],
+    ["sale-badge-foreground", "sale-badge", 4.5],
     ["info", "info-surface", 4.5],
     ["success", "success-surface", 4.5],
     ["warning", "warning-surface", 4.5],

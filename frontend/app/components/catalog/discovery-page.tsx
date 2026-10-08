@@ -365,7 +365,7 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
                 </div>
               </div>
             ) : data.catalog.results.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="product-grid product-grid--catalog">
                 {data.catalog.results.map((product) => <ProductCard key={product.id} product={product} />)}
               </div>
             ) : <p className="rounded-lg border border-border bg-card p-6">There are no products on this page. <Link to={discoveryHref(path, { ...data.query, page: 1 }, scope)}>Return to page 1</Link>.</p>}

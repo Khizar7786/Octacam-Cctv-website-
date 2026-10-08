@@ -74,6 +74,12 @@ class Product(models.Model):
     def primary_image(self):
         return next(iter(self.images.all()), None)
 
+    @property
+    def secondary_image(self):
+        images = iter(self.images.all())
+        next(images, None)
+        return next(images, None)
+
     def __str__(self):
         return f"{self.name} ({self.sku})"
 

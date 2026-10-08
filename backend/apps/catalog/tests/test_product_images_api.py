@@ -13,6 +13,8 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.catalog.models import Brand, Category, Product, ProductImage
+from apps.catalog.api.serializers import PublicProductListSerializer
+from apps.catalog.selectors import get_public_products
 
 
 def image_upload(*, name="camera.png", image_format="PNG", content_type="image/png", size=(32, 24)):
@@ -93,6 +95,11 @@ class ProductImageApiTests(TestCase):
         self.assertEqual(listing.status_code, 200)
         self.assertEqual(listing.data["results"][0]["primary_image"]["id"], first.data["id"])
         self.assertTrue(listing.data["results"][0]["primary_image"]["image_url"].startswith("/media/"))
+        self.assertEqual(listing.data["results"][0]["secondary_image"]["id"], later.data["id"])
+        prefetched = list(get_public_products())
+        with self.assertNumQueries(0):
+            previews = PublicProductListSerializer(prefetched, many=True).data
+        self.assertEqual(previews[0]["secondary_image"]["id"], later.data["id"])
         detail = self.client.get("/api/v1/catalog/products/image-product/")
         self.assertEqual([image["sort_order"] for image in detail.data["images"]], [1, 5])
         self.assertEqual(detail.data["images"][0]["id"], first.data["id"])
@@ -167,6 +174,7 @@ class ProductImageApiTests(TestCase):
         self.client.credentials()
         listing = self.client.get("/api/v1/catalog/products/")
         self.assertEqual(listing.data["results"][0]["primary_image"]["id"], second_id)
+        self.assertEqual(listing.data["results"][0]["secondary_image"]["id"], first_id)
 
     def test_replacement_and_delete_remove_old_files_after_commit(self):
         self.authorize(self.staff)
@@ -195,3 +203,13 @@ class ProductImageApiTests(TestCase):
         self.assertFalse(image.image.storage.exists(second_key))
         self.client.credentials()
         self.assertIsNone(self.client.get("/api/v1/catalog/products/").data["results"][0]["primary_image"])
+        self.assertIsNone(self.client.get("/api/v1/catalog/products/").data["results"][0]["secondary_image"])
+
+    def test_secondary_preview_is_null_without_two_images(self):
+        self.assertIsNone(self.client.get("/api/v1/catalog/products/").data["results"][0]["secondary_image"])
+        self.authorize(self.staff)
+        image_id = self.create_image().data["id"]
+        self.client.credentials()
+        product = self.client.get("/api/v1/catalog/products/").data["results"][0]
+        self.assertEqual(product["primary_image"]["id"], image_id)
+        self.assertIsNone(product["secondary_image"])
