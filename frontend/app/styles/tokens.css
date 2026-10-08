@@ -26,7 +26,7 @@
   --destructive-foreground: #ffffff;
   --border: #cbd4df;
   --border-strong: #94a3b5;
-  --input: #8795a8;
+  --input: #808ea0;
   --ring: var(--brand);
 
   /* Header surfaces: a dark service strip and navy navigation beside the white logo row. */
@@ -40,6 +40,16 @@
   --footer: var(--navigation);
   --footer-foreground: var(--navigation-foreground);
   --footer-muted: #c4d0df;
+
+  /* Decorative icon accents stay separate from stock, warning, and error states. */
+  --icon-account: #6b46c1;
+  --icon-account-surface: #f1eaff;
+  --icon-phone: #be3455;
+  --icon-phone-surface: #ffe8ee;
+  --icon-email: #925400;
+  --icon-email-surface: #fff3d8;
+  --icon-whatsapp: #16784a;
+  --icon-whatsapp-surface: #e5f6ed;
 
   --info: #0758ce;
   --info-surface: #edf5ff;
@@ -74,8 +84,15 @@
   /* Narrow shared gutters preserve the full-width storefront without edge-flush text. */
   --page-gutter: clamp(0.75rem, 2vw, 1.25rem);
   --header-search-max: 42rem;
+  --header-row-height: 4rem;
+  --catalog-sidebar-width: 17rem;
+  --catalog-search-max: 52rem;
+  --filter-drawer-width: 25rem;
+  --overlay-backdrop: rgb(14 42 80 / 42%);
+  --drawer-shadow: -12px 0 48px rgb(14 42 80 / 16%);
+  --search-border-width: 0.75px;
+  --search-focus-shadow: 0 0 0 3px var(--brand-soft);
   --footer-gutter: clamp(1.25rem, 3vw, 2.5rem);
-  --footer-radius: 2rem;
   --reading-max: 43rem;
   --radius: 0.625rem;
   --oc-radius-sm: 0.375rem;
@@ -87,5 +104,6 @@
   --focus-offset: 3px;
   --motion-duration-fast: 140ms;
   --motion-duration-standard: 220ms;
+  --motion-duration-drawer: 260ms;
   --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }

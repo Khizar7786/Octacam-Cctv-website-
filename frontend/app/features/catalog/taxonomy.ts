@@ -69,6 +69,25 @@ export async function getPublicTaxonomy(
   }
 }
 
+/** Navigation needs the complete active list, including brands beyond page one. */
+export async function getAllPublicBrands(client: ApiClient, signal?: AbortSignal): Promise<PublicTaxonomy[]> {
+  const brands: PublicTaxonomy[] = [];
+  const seenPages = new Set<number>();
+  let pageNumber = 1;
+  while (true) {
+    seenPages.add(pageNumber);
+    const page = await getPublicTaxonomies(client, "brands", { page: pageNumber, signal });
+    brands.push(...page.results);
+    if (!page.next) return brands;
+    const next = new URL(page.next, "http://octacam.invalid").searchParams.get("page");
+    const nextNumber = Number(next);
+    if (!next || !/^[1-9]\d*$/.test(next) || !Number.isSafeInteger(nextNumber) || seenPages.has(nextNumber) || !page.results.length) {
+      throw unexpectedApiResponse(page);
+    }
+    pageNumber = nextNumber;
+  }
+}
+
 export async function getScopedFilterOptions(
   client: ApiClient,
   scope: { brand?: string; category?: string },

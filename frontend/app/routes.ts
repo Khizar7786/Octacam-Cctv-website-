@@ -8,7 +8,7 @@ export default [
   route("brands", "routes/brands.tsx"),
   route("brands/:slug", "routes/brand.tsx"),
   route("categories/:slug", "routes/category.tsx"),
-  route("products/:slug", "routes/product-pending.tsx"),
+  route("products/:slug", "routes/product.tsx"),
   route("foundation", "routes/foundation.tsx"),
   route("visual-foundation", "routes/visual-foundation.tsx"),
   ...plannedPages.map(({ to }) => route(to.slice(1), "routes/planned.tsx", {

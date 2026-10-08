@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router";
 import { Container } from "~/components/layout/container";
+import { StoreIcon } from "~/components/ui/store-icon";
 import { plannedPages } from "~/config/storefront";
 
 export function meta() {
@@ -12,6 +13,7 @@ export default function PlannedPage() {
 
   return (
     <Container size="reading" className="px-0 py-10 sm:py-16">
+      {pathname === "/contact" ? <div className="mb-3"><StoreIcon badge name="contact" /></div> : null}
       <span className="text-sm font-semibold text-primary">In development</span>
       <h1 className="mt-3 text-[length:var(--font-size-heading)] font-bold tracking-[-0.035em]">
         {page?.label ?? "This page"} is coming soon

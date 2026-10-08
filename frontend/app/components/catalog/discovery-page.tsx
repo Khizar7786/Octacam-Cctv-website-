@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type SelectHTMLAttributes } from "react";
 import { Link, useLocation, useNavigate, useNavigation, useRevalidator } from "react-router";
 import { ProductCard } from "./product-card";
 import { Breadcrumbs } from "./catalog-listing";
 import { buttonStyles } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { StoreIcon } from "~/components/ui/store-icon";
+import { cn } from "~/lib/utils";
 import {
   discoveryHref, discoveryPageHref, discoverySearchParams, parseDiscoveryQuery, validateTechnicalFilters, withCategory, withoutFilters,
   type DiscoveryErrors, type DiscoveryQuery, type DiscoveryScope, type ProductSort,
@@ -39,21 +41,21 @@ function FilterFields({
   }
 
   return (
-    <div className="grid gap-5">
+    <div className="catalog-fields grid gap-3">
       {notice ? <p className="rounded-md border border-info bg-info-surface p-3 text-sm" role="status">{notice}</p> : null}
       {(["brand", "category"] as const).filter((field) => !(field in scope)).map((field) => (
-        <div key={field}>
+        <div className="catalog-field min-w-0" key={field}>
           <label className="mb-1 block text-sm font-semibold" htmlFor={`${prefix}-${field}`}>{field === "brand" ? "Brand" : "Category"}</label>
-          <select aria-describedby={errors[field] ? `${prefix}-${field}-error` : undefined} aria-invalid={Boolean(errors[field])} className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-foreground" id={`${prefix}-${field}`} name={field} onChange={(event) => onChange(field, event.target.value)} value={draft[field]}>
+          <CatalogSelect aria-describedby={errors[field] ? `${prefix}-${field}-error` : undefined} aria-invalid={Boolean(errors[field])} id={`${prefix}-${field}`} name={field} onChange={(event) => onChange(field, event.target.value)} value={draft[field]}>
             <option value="">All {field === "brand" ? "brands" : "categories"}</option>
             {optionsFor(field).map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
+          </CatalogSelect>
           {errors[field] ? <p className="mt-1 text-sm text-error" id={`${prefix}-${field}-error`}>{errors[field]}</p> : null}
         </div>
       ))}
       <fieldset className="grid gap-3">
         <legend className="mb-1 text-sm font-semibold">Selling price (PKR)</legend>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {(["min_price", "max_price"] as const).map((field) => (
             <div key={field}>
               <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor={`${prefix}-${field}`}>{field === "min_price" ? "Minimum" : "Maximum"}</label>
@@ -63,26 +65,26 @@ function FilterFields({
           ))}
         </div>
       </fieldset>
-      <div>
+      <div className="catalog-field">
         <label className="mb-1 block text-sm font-semibold" htmlFor={`${prefix}-availability`}>Availability</label>
-        <select aria-describedby={errors.availability ? `${prefix}-availability-error` : undefined} aria-invalid={Boolean(errors.availability)} className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-foreground" id={`${prefix}-availability`} onChange={(event) => onChange("availability", event.target.value)} value={draft.availability}>
+        <CatalogSelect aria-describedby={errors.availability ? `${prefix}-availability-error` : undefined} aria-invalid={Boolean(errors.availability)} id={`${prefix}-availability`} onChange={(event) => onChange("availability", event.target.value)} value={draft.availability}>
           <option value="">All products</option>
           <option value="in_stock">In stock</option>
           <option value="out_of_stock">Out of stock</option>
-        </select>
+        </CatalogSelect>
         {errors.availability ? <p className="mt-1 text-sm text-error" id={`${prefix}-availability-error`}>{errors.availability}</p> : null}
       </div>
       {draft.category !== committedCategory ? (
-        <p className="text-sm text-muted-foreground">Apply filters to load technical options for the selected category.</p>
+        <p className="rounded-sm bg-background p-3 text-xs leading-relaxed text-muted-foreground">Apply filters to load technical options for the selected category.</p>
       ) : draft.category && filters?.specifications.length ? (
-        <fieldset className="grid gap-4 border-t border-border pt-5">
+        <fieldset className="grid gap-4">
           <legend className="text-sm font-semibold">Technical specifications</legend>
           {filters.specifications.map((definition) => (
             <SpecificationField definition={definition} draft={draft} errors={errors} key={definition.key} onChange={onSpecificationChange} prefix={prefix} />
           ))}
         </fieldset>
       ) : draft.category ? null : (
-        <p className="text-sm text-muted-foreground">Choose a category to see relevant technical filters.</p>
+        <p className="rounded-sm bg-background p-3 text-xs leading-relaxed text-muted-foreground">Choose a category to see relevant technical filters.</p>
       )}
     </div>
   );
@@ -104,10 +106,10 @@ function SpecificationField({ definition, draft, errors, prefix, onChange }: {
     return (
       <div>
         <label className="mb-1 block text-sm font-semibold" htmlFor={`${prefix}-${base}`}>{title}</label>
-        <select aria-describedby={errors[base] ? `${prefix}-${base}-error` : undefined} aria-invalid={Boolean(errors[base])} className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-foreground" id={`${prefix}-${base}`} onChange={(event) => onChange(base, event.target.value)} value={selected}>
+        <CatalogSelect aria-describedby={errors[base] ? `${prefix}-${base}-error` : undefined} aria-invalid={Boolean(errors[base])} id={`${prefix}-${base}`} onChange={(event) => onChange(base, event.target.value)} value={selected}>
           <option value="">Any {definition.label.toLowerCase()}</option>
           {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
+        </CatalogSelect>
         {errors[base] ? <p className="mt-1 text-sm text-error" id={`${prefix}-${base}-error`}>{errors[base]}</p> : null}
       </div>
     );
@@ -116,7 +118,7 @@ function SpecificationField({ definition, draft, errors, prefix, onChange }: {
     <fieldset className="grid gap-2">
       <legend className="text-sm font-semibold">{title}</legend>
       <p className="text-xs text-muted-foreground">Observed range: {definition.min} to {definition.max}{definition.unit ? ` ${definition.unit}` : ""}</p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {(["min", "max"] as const).map((bound) => {
           const parameter = `${base}_${bound}`;
           return (
@@ -173,7 +175,17 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
     closeRef.current?.focus();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previousOverflow; };
+    const desktop = window.matchMedia("(min-width: 64rem)");
+    function onViewportChange() {
+      if (!desktop.matches) return;
+      setMobileOpen(false);
+      searchRef.current?.focus();
+    }
+    desktop.addEventListener("change", onViewportChange);
+    return () => {
+      desktop.removeEventListener("change", onViewportChange);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [mobileOpen]);
 
   function closeMobile() {
@@ -275,7 +287,7 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-6">
       {heading ? <Breadcrumbs items={heading.breadcrumbs} /> : null}
       <header className="max-w-3xl">
         <p className="text-sm font-bold text-primary">{heading?.eyebrow ?? "OctaCam catalog"}</p>
@@ -284,23 +296,23 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
       </header>
       {typeof location.state?.catalogScopeNotice === "string" ? <p className="rounded-md border border-info bg-info-surface p-3 text-sm" role="status">{location.state.catalogScopeNotice}</p> : null}
 
-      <form aria-label="Catalog search" className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={apply} role="search">
+      <form aria-label="Catalog search" className="grid max-w-[var(--catalog-search-max)] gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end" onSubmit={apply} role="search">
         <div className="min-w-0 flex-1">
           <label className="mb-1 block text-sm font-semibold" htmlFor="catalog-search">Product name or model/SKU</label>
-          <Input aria-describedby={draftErrors.q ? "catalog-search-error" : undefined} aria-invalid={Boolean(draftErrors.q)} autoComplete="off" id="catalog-search" onChange={(event) => { setDraft((current) => ({ ...current, q: event.target.value })); setDraftErrors((current) => ({ ...current, q: undefined })); }} placeholder="Search cameras, recorders, or a model number" ref={searchRef} type="search" value={draft.q} />
+          <Input aria-describedby={draftErrors.q ? "catalog-search-error" : undefined} aria-invalid={Boolean(draftErrors.q)} autoComplete="off" className="catalog-control" id="catalog-search" onChange={(event) => { setDraft((current) => ({ ...current, q: event.target.value })); setDraftErrors((current) => ({ ...current, q: undefined })); }} placeholder="Search cameras, recorders, or a model number" ref={searchRef} type="search" value={draft.q} />
           {draftErrors.q ? <p className="mt-1 text-sm text-error" id="catalog-search-error">{draftErrors.q}</p> : null}
         </div>
-        <button className={buttonStyles({ className: "sm:mb-0" })} type="submit">Search products</button>
+        <button className={buttonStyles({ className: "sm:mb-0" })} type="submit"><StoreIcon inheritColor name="search" />Search products</button>
       </form>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 lg:hidden">
-        <button aria-controls="mobile-catalog-filters" aria-expanded={mobileOpen} aria-haspopup="dialog" className={buttonStyles({ variant: "outline" })} onClick={() => { setDraft(data.query); setDraftErrors({}); setScopeNotice(""); setMobileOpen(true); }} ref={triggerRef} type="button">Filters{chips.length ? ` (${chips.length})` : ""}</button>
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-border bg-card p-3 lg:hidden">
+        <button aria-controls="mobile-catalog-filters" aria-expanded={mobileOpen} aria-haspopup="dialog" className={buttonStyles({ variant: "outline" })} onClick={() => { setDraft(data.query); setDraftErrors({}); setScopeNotice(""); setMobileOpen(true); }} ref={triggerRef} type="button"><StoreIcon name="filters" />Filters{chips.length ? ` (${chips.length})` : ""}</button>
         <SortControl id="mobile-catalog-sort" onChange={(sort) => navigate(discoveryHref(path, { ...data.query, sort, page: 1 }, scope))} sort={data.query.sort} />
       </div>
 
       {chips.length ? (
         <div aria-label="Active filters" className="flex flex-wrap items-center gap-2">
-          {chips.map((chip) => <button aria-label={`Remove ${chip.label} filter`} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border-strong bg-card px-3 text-sm hover:bg-accent" data-filter-chip key={chip.field} onClick={() => removeFilter(chip.field)} type="button">{chip.label}<span aria-hidden="true">×</span></button>)}
+          {chips.map((chip) => <button aria-label={`Remove ${chip.label} filter`} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-primary/30 bg-accent px-3 text-sm text-accent-foreground hover:border-primary" data-filter-chip key={chip.field} onClick={() => removeFilter(chip.field)} type="button">{chip.label}<span aria-hidden="true">×</span></button>)}
           <Link className="inline-flex min-h-11 items-center px-2 text-sm" onClick={() => { focusAfterChip.current = true; }} to={discoveryHref(path, withoutFilters(data.query, scope), scope)}>Clear filters</Link>
         </div>
       ) : null}
@@ -321,12 +333,12 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
         </section>
       ) : null}
 
-      <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-8">
-        <aside aria-label="Catalog filters" className="hidden self-start rounded-lg border border-border bg-card p-5 lg:block">
-          <h2 className="mb-5 text-lg font-bold">Filter products</h2>
+      <div className="lg:grid lg:grid-cols-[var(--catalog-sidebar-width)_minmax(0,1fr)] lg:gap-6">
+        <aside aria-label="Catalog filters" className="catalog-filter-sidebar hidden min-w-0 self-start lg:block">
+          <div className="catalog-filter-heading flex items-center gap-3 px-4 py-3"><StoreIcon name="filters" /><h2 className="text-base font-bold">Filter products</h2></div>
           <form onSubmit={apply}>
-            <FilterFields committedCategory={data.query.category} draft={draft} errors={draftErrors} filters={filters} notice={scopeNotice} onChange={changeField} onSpecificationChange={changeSpecification} prefix="desktop" scope={scope} />
-            <div className="mt-6 grid gap-2">
+            <div className="p-4"><FilterFields committedCategory={data.query.category} draft={draft} errors={draftErrors} filters={filters} notice={scopeNotice} onChange={changeField} onSpecificationChange={changeSpecification} prefix="desktop" scope={scope} /></div>
+            <div className="catalog-filter-actions grid gap-2">
               <button className={buttonStyles()} type="submit">Apply filters</button>
               <button className={buttonStyles({ variant: "outline" })} onClick={clearDraft} type="button">Clear filters</button>
             </div>
@@ -335,7 +347,7 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
 
         {data.state === "ready" ? (
           <section aria-busy={loading} aria-labelledby="products-heading" className="min-w-0">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
               <div>
                 <h2 className="text-lg font-bold" id="products-heading">{data.query.q ? `Results for “${data.query.q}”` : "Published products"}</h2>
                 <p className="mt-1 text-sm text-muted-foreground" role="status">{data.catalog.count} {data.catalog.count === 1 ? "product" : "products"} · Page {data.query.page}</p>
@@ -368,17 +380,17 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
       </div>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-50 bg-foreground/60 p-0 sm:p-4 lg:hidden">
-          <div aria-label="Filter products" aria-modal="true" className="ml-auto flex h-full w-full max-w-md flex-col bg-card shadow-lg sm:rounded-lg" id="mobile-catalog-filters" onKeyDown={dialogKeyDown} ref={dialogRef} role="dialog">
-            <div className="flex items-center justify-between gap-3 border-b border-border p-4">
-              <h2 className="text-lg font-bold">Filter products</h2>
-              <button className={buttonStyles({ variant: "ghost" })} onClick={closeMobile} ref={closeRef} type="button">Close</button>
+        <div className="catalog-filter-backdrop fixed inset-0 z-50 lg:hidden" onClick={(event) => { if (event.target === event.currentTarget) closeMobile(); }}>
+          <div aria-labelledby="mobile-filters-heading" aria-modal="true" className="catalog-filter-drawer ml-auto flex flex-col bg-card" id="mobile-catalog-filters" onKeyDown={dialogKeyDown} ref={dialogRef} role="dialog">
+            <div className="catalog-filter-heading flex shrink-0 items-center justify-between gap-3 px-4 py-3">
+              <div className="flex items-center gap-3"><StoreIcon name="filters" /><h2 className="text-lg font-bold" id="mobile-filters-heading">Filter products</h2></div>
+              <button className={buttonStyles({ variant: "ghost" })} aria-label="Close filters" onClick={closeMobile} ref={closeRef} type="button"><StoreIcon name="close" /></button>
             </div>
             <form className="flex min-h-0 flex-1 flex-col" onSubmit={apply}>
-              <div className="min-h-0 flex-1 overflow-y-auto p-4"><FilterFields committedCategory={data.query.category} draft={draft} errors={draftErrors} filters={filters} notice={scopeNotice} onChange={changeField} onSpecificationChange={changeSpecification} prefix="mobile" scope={scope} /></div>
-              <div className="flex gap-3 border-t border-border bg-card p-4">
-                <button className={buttonStyles({ variant: "outline", className: "flex-1" })} onClick={clearDraft} type="button">Clear</button>
-                <button className={buttonStyles({ className: "flex-1" })} type="submit">Apply filters</button>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"><FilterFields committedCategory={data.query.category} draft={draft} errors={draftErrors} filters={filters} notice={scopeNotice} onChange={changeField} onSpecificationChange={changeSpecification} prefix="mobile" scope={scope} /></div>
+              <div className="catalog-filter-actions grid shrink-0 grid-cols-2 gap-2">
+                <button className={buttonStyles({ variant: "outline", className: "min-w-0" })} onClick={clearDraft} type="button">Clear</button>
+                <button className={buttonStyles({ className: "min-w-0" })} type="submit">Apply filters</button>
               </div>
             </form>
           </div>
@@ -391,11 +403,20 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
 
 function SortControl({ id, sort, onChange }: { id: string; sort: ProductSort; onChange: (sort: ProductSort) => void }) {
   return (
-    <div>
-      <label className="mb-1 block text-sm font-semibold" htmlFor={id}>Sort by</label>
-      <select className="min-h-11 rounded-md border border-input bg-background px-3 text-foreground" id={id} onChange={(event) => onChange(event.target.value as ProductSort)} value={sortLabels[sort] ? sort : "relevance"}>
+    <div className="min-w-0">
+      <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor={id}>Sort by</label>
+      <CatalogSelect id={id} onChange={(event) => onChange(event.target.value as ProductSort)} value={sortLabels[sort] ? sort : "relevance"}>
         {(Object.entries(sortLabels) as [ProductSort, string][]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-      </select>
+      </CatalogSelect>
     </div>
+  );
+}
+
+function CatalogSelect({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <span className="relative block w-full">
+      <select className={cn("catalog-control appearance-none text-base sm:text-sm", className)} {...props} />
+      <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 [&_svg]:size-3"><StoreIcon name="chevron" /></span>
+    </span>
   );
 }

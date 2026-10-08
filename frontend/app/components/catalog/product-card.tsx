@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import type { Money, PublicProduct } from "~/features/catalog/api";
-
-function isLowerPrice(value: Money, regular: Money): boolean {
-  return BigInt(value.replace(".", "")) < BigInt(regular.replace(".", ""));
-}
+import { hasValidSale, type PublicProduct } from "~/features/catalog/api";
 
 function ProductImage({ product }: { product: PublicProduct }) {
   const [failed, setFailed] = useState(false);
@@ -28,9 +24,7 @@ function ProductImage({ product }: { product: PublicProduct }) {
 }
 
 export function ProductCard({ product }: { product: PublicProduct }) {
-  const hasSale = product.sale_price !== null
-    && product.sale_price === product.selling_price
-    && isLowerPrice(product.sale_price, product.regular_price);
+  const hasSale = hasValidSale(product);
 
   return (
     <article className="flex min-w-0 flex-col rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -43,7 +37,7 @@ export function ProductCard({ product }: { product: PublicProduct }) {
         {hasSale ? <p className="text-sm text-muted-foreground">Regular price: <s>PKR {product.regular_price}</s></p> : null}
         <p className="mt-2 text-sm font-semibold">{product.is_in_stock ? "In stock" : "Out of stock"}</p>
         <Link className="mt-3 inline-flex min-h-11 items-center text-sm" to={`/products/${encodeURIComponent(product.slug)}`}>
-          Product details <span className="ml-1 text-xs font-normal">(coming soon)</span>
+          Product details
         </Link>
       </div>
     </article>

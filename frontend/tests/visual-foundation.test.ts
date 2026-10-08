@@ -47,11 +47,14 @@ test("text and focus color pairs meet their WCAG contrast targets", () => {
     ["brand", "brand-foreground", 4.5],
     ["foreground", "background", 4.5],
     ["muted-foreground", "card", 4.5],
+    ["secondary-foreground", "card", 4.5],
+    ["accent-foreground", "accent", 4.5],
     ["info", "info-surface", 4.5],
     ["success", "success-surface", 4.5],
     ["warning", "warning-surface", 4.5],
     ["error", "error-surface", 4.5],
     ["brand", "background", 3],
+    ["input", "background", 3],
     ["navigation-foreground", "header-strip", 4.5],
     ["navigation-foreground", "navigation", 4.5],
     ["navigation-foreground", "navigation-hover", 4.5],
@@ -60,6 +63,12 @@ test("text and focus color pairs meet their WCAG contrast targets", () => {
     ["footer-foreground", "footer", 4.5],
     ["footer-muted", "footer", 4.5],
     ["navigation-focus", "footer", 3],
+    ["brand", "brand-soft", 3],
+    ["icon-account", "icon-account-surface", 3],
+    ["icon-account", "card", 3],
+    ["icon-phone", "icon-phone-surface", 3],
+    ["icon-email", "icon-email-surface", 3],
+    ["icon-whatsapp", "icon-whatsapp-surface", 3],
   ] as const;
 
   for (const [foreground, background, minimum] of pairs) {

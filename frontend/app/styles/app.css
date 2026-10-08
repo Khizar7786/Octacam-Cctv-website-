@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./catalog.css";
 
 @theme inline {
   --spacing: var(--space-1);
@@ -32,6 +33,14 @@
   --color-footer: var(--footer);
   --color-footer-foreground: var(--footer-foreground);
   --color-footer-muted: var(--footer-muted);
+  --color-icon-account: var(--icon-account);
+  --color-icon-account-surface: var(--icon-account-surface);
+  --color-icon-phone: var(--icon-phone);
+  --color-icon-phone-surface: var(--icon-phone-surface);
+  --color-icon-email: var(--icon-email);
+  --color-icon-email-surface: var(--icon-email-surface);
+  --color-icon-whatsapp: var(--icon-whatsapp);
+  --color-icon-whatsapp-surface: var(--icon-whatsapp-surface);
   --color-info: var(--info);
   --color-info-surface: var(--info-surface);
   --color-success: var(--success);
@@ -133,4 +142,13 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.header-search {
+  border: var(--search-border-width) solid var(--input);
+}
+
+.header-search:focus-within {
+  border-color: var(--ring);
+  box-shadow: var(--search-focus-shadow);
 }

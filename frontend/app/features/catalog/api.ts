@@ -43,6 +43,24 @@ export interface PublicProduct {
   primary_image: ProductImage | null;
 }
 
+export interface ProductSpecification {
+  definition: number;
+  key: string;
+  label: string;
+  data_type: "text" | "integer" | "decimal" | "boolean" | "choice";
+  unit: string;
+  value: string | number | boolean;
+  display_value: string;
+}
+
+export interface PublicProductDetail extends PublicProduct {
+  full_description: string;
+  warranty_text: string;
+  specifications: ProductSpecification[];
+  images: ProductImage[];
+  updated_at: string;
+}
+
 const PRODUCTS_PATH = "/api/v1/catalog/products/" as const;
 const MONEY_PATTERN = /^(?:0|[1-9]\d{0,9})\.\d{2}$/;
 
@@ -53,6 +71,26 @@ export async function getPublicProducts(
   const query = options.searchParams?.toString();
   const path = apiPath(`${PRODUCTS_PATH}${query ? `?${query}` : ""}`);
   return requestProductPage(client, path, options.signal);
+}
+
+export async function getPublicProductDetail(
+  client: ApiClient,
+  slug: string,
+  signal?: AbortSignal,
+): Promise<PublicProductDetail> {
+  const body = await client.request<unknown>(apiPath(`${PRODUCTS_PATH}${encodeURIComponent(slug)}/`), { signal });
+  try {
+    return parseProductDetail(body);
+  } catch (error) {
+    if (error instanceof TypeError) throw unexpectedApiResponse(body);
+    throw error;
+  }
+}
+
+export function hasValidSale(product: Pick<PublicProduct, "regular_price" | "sale_price" | "selling_price">): boolean {
+  return product.sale_price !== null
+    && product.sale_price === product.selling_price
+    && BigInt(product.sale_price.replace(".", "")) < BigInt(product.regular_price.replace(".", ""));
 }
 
 export async function getPublicProductPage(
@@ -111,6 +149,48 @@ function parseProduct(value: unknown): PublicProduct {
     primary_image: product.primary_image === null
       ? null
       : parseImage(product.primary_image, "product.primary_image"),
+  };
+}
+
+function parseProductDetail(value: unknown): PublicProductDetail {
+  const detail = expectRecord(value, "product detail");
+  if (!Array.isArray(detail.images) || !Array.isArray(detail.specifications)) {
+    throw new TypeError("Product images and specifications must be arrays.");
+  }
+  const product = parseProduct(detail);
+  if (product.is_in_stock !== (product.stock_quantity > 0)) {
+    throw new TypeError("Product stock status conflicts with its quantity.");
+  }
+  return {
+    ...product,
+    full_description: expectString(detail.full_description, "product.full_description"),
+    warranty_text: expectString(detail.warranty_text, "product.warranty_text"),
+    specifications: detail.specifications.map(parseSpecification),
+    images: detail.images.map((image, index) => parseImage(image, `product.images[${index}]`)),
+    updated_at: expectString(detail.updated_at, "product.updated_at"),
+  };
+}
+
+function parseSpecification(value: unknown): ProductSpecification {
+  const specification = expectRecord(value, "product specification");
+  const data_type = expectString(specification.data_type, "specification.data_type");
+  if (!["text", "integer", "decimal", "boolean", "choice"].includes(data_type)) {
+    throw new TypeError("Unsupported product specification type.");
+  }
+  const raw = specification.value;
+  if (data_type === "boolean" ? typeof raw !== "boolean"
+    : data_type === "integer" ? !Number.isInteger(raw)
+      : typeof raw !== "string") {
+    throw new TypeError("Product specification value does not match its type.");
+  }
+  return {
+    definition: expectPositiveInteger(specification.definition, "specification.definition"),
+    key: expectString(specification.key, "specification.key"),
+    label: expectString(specification.label, "specification.label"),
+    data_type: data_type as ProductSpecification["data_type"],
+    unit: expectString(specification.unit, "specification.unit"),
+    value: raw as ProductSpecification["value"],
+    display_value: expectString(specification.display_value, "specification.display_value"),
   };
 }
 

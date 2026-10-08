@@ -62,6 +62,28 @@ test("a direct shop request renders the real published catalog state in initial 
   }
 });
 
+test("a direct product page follows the real published detail contract", async () => {
+  const listing = await fetch(`${frontendOrigin}/api/v1/catalog/products/`, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(listing.status, 200);
+  const products = await listing.json() as { results: { slug: string; sku: string }[] };
+  const first = products.results[0];
+  if (first) {
+    const detail = await fetch(`${frontendOrigin}/api/v1/catalog/products/${encodeURIComponent(first.slug)}/`, { signal: AbortSignal.timeout(5_000) });
+    assert.equal(detail.status, 200);
+    const product = await detail.json() as { sku: string; selling_price: string; stock_quantity: number };
+    const response = await fetch(`${frontendOrigin}/products/${encodeURIComponent(first.slug)}`, { signal: AbortSignal.timeout(5_000) });
+    const html = (await response.text()).split("<script")[0];
+    assert.equal(response.status, 200);
+    assert.ok(html.includes(product.sku));
+    assert.ok(html.includes(product.selling_price));
+    assert.ok(html.includes(String(product.stock_quantity)) || product.stock_quantity === 0);
+  } else {
+    const response = await fetch(`${frontendOrigin}/products/octacam-no-such-product`, { signal: AbortSignal.timeout(5_000) });
+    assert.equal(response.status, 404);
+    assert.match(await response.text(), /Page not found/);
+  }
+});
+
 test("the live search contract and direct SSR search route agree on result count", async () => {
   const query = "q=octacam-no-such-model&min_price=0.00&availability=in_stock&sort=price_asc";
   const productsResponse = await fetch(`${frontendOrigin}/api/v1/catalog/products/?${query}`, { signal: AbortSignal.timeout(5_000) });

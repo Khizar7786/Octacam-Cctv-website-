@@ -100,6 +100,16 @@ Django validates choices and definitions that metadata cannot fully describe,
 and field errors remain available for correction. Published catalog records
 are still required before real-world filter combinations can be verified.
 
+**Product detail update, 5 October 2026:** `/products/:slug` now server-renders
+the public published-product detail contract: identity, current decimal PKR
+price and stock, images with selectable thumbnails, descriptions, displayed
+typed specifications, and supplied warranty text. The purchase panel appears
+before media and specifications on phones; quantity is bounded by the last
+known stock and can be refreshed. Add to cart remains visibly unavailable
+until the cart slice, so selecting quantity creates no business action. Django
+returns 404 for unpublished and unknown products. Verified contact channels
+and approved shipping/warranty policies are still pending business input.
+
 ## Repository snapshot reviewed on 2 October 2026
 
 | Requirement | What exists | Remaining work |

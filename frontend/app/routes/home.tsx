@@ -36,7 +36,7 @@ function SectionHeading({ eyebrow, title, id, children }: { eyebrow: string; tit
 
 export default function Home() {
   const { products, catalogUnavailable } = useLoaderData<typeof loader>();
-  const active = useRouteLoaderData("root") as { brandLinks: typeof brandLinks[number][]; categoryLinks: typeof categoryLinks[number][]; brandsUnavailable: boolean; categoriesUnavailable: boolean } | undefined;
+  const active = useRouteLoaderData("root") as { brandLinks: { label: string; to: string }[]; categoryLinks: typeof categoryLinks[number][]; brandsUnavailable: boolean; categoriesUnavailable: boolean } | undefined;
   const visibleBrandLinks = active?.brandLinks ?? brandLinks.filter((link) => link.to === "/brands");
   const visibleCategoryLinks = active?.categoryLinks ?? [];
 

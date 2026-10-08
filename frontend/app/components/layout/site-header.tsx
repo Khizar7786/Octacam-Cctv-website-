@@ -1,28 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useRouteLoaderData } from "react-router";
-import { OctacamLogo } from "~/components/brand/octacam-logo";
+import { OctacamWordmark } from "~/components/brand/octacam-logo";
 import { Container } from "~/components/layout/container";
+import { HeaderSearch } from "~/components/layout/header-search";
+import { StoreIcon, type StoreIconName } from "~/components/ui/store-icon";
 import { brandLinks, categoryLinks, policyLinks } from "~/config/storefront";
 import { cn } from "~/lib/utils";
 
 type Panel = "menu" | "search" | null;
 
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <circle cx="10.8" cy="10.8" r="6.8" />
-      <path d="m16 16 5 5" />
-    </svg>
-  );
-}
-
-function MenuIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <path d="M3 6h18M3 12h18M3 18h18" />
-    </svg>
-  );
-}
+const plannedIcons: Partial<Record<string, StoreIconName>> = {
+  "/cart": "cart",
+  "/login": "account",
+  "/surveys": "survey",
+  "/contact": "contact",
+};
 
 function PlannedLink({
   label,
@@ -37,6 +29,7 @@ function PlannedLink({
   compact?: boolean;
   dark?: boolean;
 }) {
+  const iconName = plannedIcons[to];
   return (
     <Link
       className={cn(
@@ -49,7 +42,10 @@ function PlannedLink({
       onClick={onClick}
       to={to}
     >
-      <span>{label}</span>
+      <span className="inline-flex items-center gap-2">
+        {iconName ? <StoreIcon badge={dark || compact} name={iconName} /> : null}
+        <span className={!compact && to === "/cart" ? "sr-only sm:not-sr-only" : undefined}>{label}</span>
+      </span>
       <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[0.625rem] font-semibold text-muted-foreground">Soon</span>
     </Link>
   );
@@ -72,7 +68,7 @@ function CatalogLink({ label, to, compact = false, dark = false, onClick }: { la
 }
 
 export function SiteHeader() {
-  const active = useRouteLoaderData("root") as { brandLinks: typeof brandLinks[number][]; categoryLinks: typeof categoryLinks[number][] } | undefined;
+  const active = useRouteLoaderData("root") as { brandLinks: { label: string; to: string }[]; categoryLinks: typeof categoryLinks[number][] } | undefined;
   const visibleBrandLinks = active?.brandLinks ?? brandLinks.filter((link) => link.to === "/brands");
   const visibleCategoryLinks = active?.categoryLinks ?? [];
   const [openPanel, setOpenPanel] = useState<Panel>(null);
@@ -133,23 +129,20 @@ export function SiteHeader() {
   return (
     <header className="border-b border-border bg-card">
       <div className="bg-header-strip">
-        <Container className="py-2 text-xs text-navigation-foreground">
+        <Container className="py-1 text-center text-xs text-navigation-foreground">
           Storefront in development <span aria-hidden="true">·</span> Free site surveys are for Lahore; installation is quoted afterward.
         </Container>
       </div>
 
       <Container>
-        <div className="flex min-h-20 items-center justify-between gap-3 py-2 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,var(--header-search-max))_minmax(0,1fr)] xl:gap-8">
-          <Link className="block w-20 shrink-0 rounded-md" onClick={() => setOpenPanel(null)} ref={logoLink} to="/">
-            <OctacamLogo alt="OctaCam home" />
+        <div className="flex min-h-[var(--header-row-height)] items-center justify-between gap-2 py-1 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,var(--header-search-max))_minmax(0,1fr)] xl:gap-4 2xl:gap-8">
+          <Link aria-label="OctaCam home" className="inline-flex min-h-11 shrink-0 items-center rounded-md" onClick={() => setOpenPanel(null)} ref={logoLink} to="/">
+            <OctacamWordmark />
           </Link>
 
-          <form action="/search" aria-label="Site search" className="hidden w-full min-w-0 items-center gap-2 rounded-full border border-input bg-background p-1 pl-4 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 xl:flex" method="get" role="search">
-            <label className="sr-only" htmlFor="header-search">Search product names and model numbers</label>
-            <span className="text-muted-foreground"><SearchIcon /></span>
-            <input className="min-h-11 min-w-0 flex-1 rounded-full border-0 bg-transparent px-1 text-foreground focus-visible:outline-none" defaultValue={currentSearch} id="header-search" key={location.pathname + location.search} maxLength={120} name="q" placeholder="Search products and model numbers" type="search" />
-            <button className="min-h-11 shrink-0 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover" type="submit">Search</button>
-          </form>
+          <div className="hidden min-w-0 xl:block">
+            <HeaderSearch id="header-search" key={location.pathname + location.search} value={currentSearch} />
+          </div>
 
           <div className="flex items-center gap-2 xl:justify-self-end">
             <button
@@ -161,7 +154,7 @@ export function SiteHeader() {
               ref={searchTrigger}
               type="button"
             >
-              <SearchIcon /><span aria-hidden="true" className="hidden sm:inline">Search</span>
+              <StoreIcon name="search" /><span aria-hidden="true" className="hidden sm:inline">Search</span>
             </button>
             <span className="hidden xl:inline-flex"><PlannedLink label="Account" to="/login" /></span>
             <PlannedLink label="Cart" to="/cart" />
@@ -174,20 +167,21 @@ export function SiteHeader() {
               ref={menuTrigger}
               type="button"
             >
-              <MenuIcon /><span aria-hidden="true" className="hidden sm:inline">Menu</span>
+              <StoreIcon name="menu" /><span aria-hidden="true" className="hidden sm:inline">Menu</span>
             </button>
           </div>
         </div>
       </Container>
 
       <div className="hidden bg-navigation xl:block">
-        <Container className="flex min-h-12 items-center justify-between gap-4">
-          <nav aria-label="Storefront" className="flex flex-wrap items-center gap-x-1">
+        <Container className="flex min-h-12 items-start justify-between gap-4 py-1">
+          <nav aria-label="Storefront" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1">
             {visibleBrandLinks.map((link) => <CatalogLink dark key={link.to} {...link} />)}
-            <span aria-hidden="true" className="mx-2 h-5 border-l border-navigation-foreground/30" />
-            {visibleCategoryLinks.length ? visibleCategoryLinks.map((link) => <CatalogLink dark key={link.to} {...link} />) : <CatalogLink dark label="Shop all products" to="/shop" />}
+            <CatalogLink dark label="Shop all products" to="/shop" />
+            {visibleCategoryLinks.length ? <span aria-hidden="true" className="mx-2 h-5 border-l border-navigation-foreground/30" /> : null}
+            {visibleCategoryLinks.map((link) => <CatalogLink dark key={link.to} {...link} />)}
           </nav>
-          <PlannedLink dark label="Free Lahore site survey" to="/surveys" />
+          <span className="shrink-0"><PlannedLink dark label="Free Lahore site survey" to="/surveys" /></span>
         </Container>
       </div>
 
@@ -195,13 +189,9 @@ export function SiteHeader() {
         <Container className="border-t border-border py-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-bold">Search the catalog</h2>
-            <button className="min-h-11 rounded-md border border-border-strong px-3 text-sm font-semibold" onClick={closePanel} ref={searchClose} type="button">Close search</button>
+            <button className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border-strong px-3 text-sm font-semibold" onClick={closePanel} ref={searchClose} type="button"><StoreIcon name="close" />Close search</button>
           </div>
-          <form action="/search" aria-label="Mobile site search" className="mt-3 grid gap-2" method="get" onSubmit={() => setOpenPanel(null)} role="search">
-            <label className="text-sm font-semibold" htmlFor="mobile-search-field">Product name or model/SKU</label>
-            <input className="min-h-12 w-full rounded-md border border-input bg-background px-3 text-foreground" defaultValue={currentSearch} id="mobile-search-field" key={location.pathname + location.search} maxLength={120} name="q" placeholder="Search products and model numbers" ref={searchInput} type="search" />
-            <button className="min-h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover" type="submit">Search products</button>
-          </form>
+          <HeaderSearch className="mt-2" id="mobile-search-field" inputRef={searchInput} key={location.pathname + location.search} onSubmit={() => setOpenPanel(null)} value={currentSearch} />
         </Container>
       </div>
 
@@ -209,16 +199,17 @@ export function SiteHeader() {
         <Container className="py-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="font-bold">Browse OctaCam</h2>
-            <button className="min-h-11 rounded-md border border-navigation-foreground/40 px-3 text-sm font-semibold hover:bg-navigation-hover focus-visible:outline-navigation-focus" onClick={closePanel} ref={menuClose} type="button">Close menu</button>
+            <button className="inline-flex min-h-11 items-center gap-2 rounded-md border border-navigation-foreground/40 px-3 text-sm font-semibold hover:bg-navigation-hover focus-visible:outline-navigation-focus" onClick={closePanel} ref={menuClose} type="button"><StoreIcon badge name="close" />Close menu</button>
           </div>
           <nav aria-label="Mobile storefront" className="grid gap-3">
             <div>
               <h3 className="px-3 text-xs font-bold">Brands</h3>
               {visibleBrandLinks.map((link) => <CatalogLink compact dark key={link.to} onClick={() => setOpenPanel(null)} {...link} />)}
+              <CatalogLink compact dark label="Shop all products" onClick={() => setOpenPanel(null)} to="/shop" />
             </div>
             <div>
               <h3 className="px-3 text-xs font-bold">Categories</h3>
-              {visibleCategoryLinks.length ? visibleCategoryLinks.map((link) => <CatalogLink compact dark key={link.to} onClick={() => setOpenPanel(null)} {...link} />) : <CatalogLink compact dark label="Shop all products" onClick={() => setOpenPanel(null)} to="/shop" />}
+              {visibleCategoryLinks.map((link) => <CatalogLink compact dark key={link.to} onClick={() => setOpenPanel(null)} {...link} />)}
             </div>
             <div className="border-t border-navigation-foreground/30 pt-3">
               {[

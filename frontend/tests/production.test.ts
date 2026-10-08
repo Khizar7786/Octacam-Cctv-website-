@@ -20,6 +20,7 @@ let output = "";
 let catalogStatus = 200;
 let catalogReply: unknown = { count: 0, next: null, previous: null, results: [] };
 let catalogResponder: ((path: string) => unknown) | null = null;
+const detailReplies = new Map<string, { status: number; body: unknown }>();
 const taxonomy = (id: number, name: string, slug: string, is_active = true) => ({
   id, name, slug, description: "", is_active, sort_order: id,
   created_at: "2026-10-05T00:00:00Z", updated_at: "2026-10-05T00:00:00Z",
@@ -32,6 +33,13 @@ before(async () => {
     throw new Error("Run npm run build before npm run test:production.");
   });
   apiServer = createHttpServer((request, response) => {
+    const detailMatch = new URL(request.url ?? "/", "http://localhost").pathname.match(/^\/api\/v1\/catalog\/products\/([^/]+)\/$/);
+    if (detailMatch) {
+      const reply = detailReplies.get(detailMatch[1]) ?? { status: 404, body: { error: { code: "NOT_FOUND", message: "Not found.", fields: {} } } };
+      response.writeHead(reply.status, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(reply.body));
+      return;
+    }
     if (request.url?.startsWith("/api/v1/catalog/products/")) {
       const productQuery = new URL(request.url, "http://localhost").searchParams;
       if (productQuery.get("category") === "storage" && productQuery.has("spec_resolution")) {
@@ -511,6 +519,11 @@ test("All Brands follows backend pagination without changing the brand destinati
     const first = (await (await fetch(`${baseUrl}/brands`)).text()).split("<script")[0];
     assert.match(first, /21(?:\s|<!-- -->)*brands/);
     assert.match(first, /href="\/brands\?page=2"/);
+    const navigation = first.match(/<nav aria-label="Storefront"[^>]*>(.*?)<\/nav>/)?.[1];
+    assert.ok(navigation);
+    assert.match(navigation, /href="\/brands\/brand-19"/);
+    assert.ok(navigation.indexOf('href="/brands"') < navigation.indexOf('href="/brands/hikvision"'));
+    assert.ok(navigation.indexOf('href="/brands/brand-19"') < navigation.indexOf('href="/shop"'));
     const second = (await (await fetch(`${baseUrl}/brands?page=2`)).text()).split("<script")[0];
     assert.match(second, /Brand 19/);
     assert.match(second, /href="\/brands"/);
@@ -520,13 +533,77 @@ test("All Brands follows backend pagination without changing the brand destinati
   }
 });
 
-test("product-card destination is an honest placeholder until detail pages exist", async () => {
-  const response = await fetch(`${baseUrl}/products/cam-11`);
-  const html = (await response.text()).split("<script")[0];
-  assert.equal(response.status, 200);
-  assert.match(html, /Product details are coming soon/);
-  assert.match(html, /Return to shop/);
-  assert.match(response.headers.get("x-robots-tag") ?? "", /noindex/);
+test("product detail renders the published backend record in initial HTML", async () => {
+  const image = (id: number, alt_text: string, sort_order: number) => ({
+    id, image_url: `/media/products/camera-${id}.webp`, alt_text, sort_order,
+    width: 640, height: 480, created_at: "2026-10-05T00:00:00Z",
+  });
+  const product = {
+    id: 11, brand: { id: 1, name: "Hikvision", slug: "hikvision" },
+    category: { id: 2, name: "Cameras", slug: "cameras" },
+    sku: "CAM-11", slug: "cam-11", name: "Published sale camera",
+    short_description: "Verified short product explanation", full_description: "Verified full product description",
+    regular_price: "12000.00", sale_price: "9999.00", selling_price: "9999.00",
+    stock_quantity: 3, is_in_stock: true, primary_image: image(1, "Front of camera", 0),
+    images: [image(1, "Front of camera", 0), image(2, "Camera connectors", 1)],
+    specifications: [
+      { definition: 1, key: "resolution", label: "Resolution", data_type: "choice", unit: "", value: "4mp", display_value: "4 MP" },
+      { definition: 2, key: "outdoor", label: "Outdoor use", data_type: "boolean", unit: "", value: false, display_value: "No" },
+    ],
+    warranty_text: "Supplier-provided warranty text", updated_at: "2026-10-05T00:00:00Z",
+  };
+  detailReplies.set("cam-11", { status: 200, body: product });
+  detailReplies.set("sold-out", { status: 200, body: {
+    ...product, id: 12, sku: "DRV-12", slug: "sold-out", name: "Published sold-out recorder",
+    stock_quantity: 0, is_in_stock: false, regular_price: "5000.00", sale_price: "5000.00", selling_price: "5000.00",
+    primary_image: null, images: [], specifications: [], warranty_text: "",
+  } });
+  detailReplies.set("unavailable", { status: 503, body: { error: { code: "CATALOG_UNAVAILABLE", message: "Unavailable", fields: {} } } });
+  try {
+    const response = await fetch(`${baseUrl}/products/cam-11`);
+    const html = (await response.text()).split("<script")[0];
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("x-robots-tag") ?? "", /noindex/);
+    assert.match(html, /Published sale camera \(CAM-11\) \| OctaCam/);
+    assert.match(html, /href="\/categories\/cameras"/);
+    assert.match(html, /href="\/brands\/hikvision"/);
+    assert.match(html, /Model\/SKU:(?:\s|<!-- -->)*CAM-11/);
+    assert.match(html, /Verified short product explanation/);
+    assert.match(html, /Verified full product description/);
+    assert.match(html, /alt="Front of camera"/);
+    assert.match(html, /aria-label="View image 2: Camera connectors"/);
+    assert.match(html, /aria-pressed="true"/);
+    assert.match(html, /PKR(?:\s|<!-- -->)*9999\.00/);
+    assert.match(html, /<s>PKR(?:\s|<!-- -->)*12000\.00<\/s>/);
+    assert.match(html, /max="3"/);
+    assert.match(html, /3 available when checked/);
+    assert.match(html, /Resolution/);
+    assert.match(html, /4 MP/);
+    assert.match(html, /Outdoor use/);
+    assert.match(html, /Supplier-provided warranty text/);
+    assert.match(html, /Support contact details are pending verification/);
+    assert.match(html, /<button[^>]*disabled[^>]*>Add to cart \(coming soon\)<\/button>/);
+    assert.doesNotMatch(html.split("<article")[1]?.split("</article>")[0] ?? "", /href="\/cart"|Free shipping|Guaranteed compatibility/);
+
+    const soldOut = (await (await fetch(`${baseUrl}/products/sold-out`)).text()).split("<script")[0];
+    assert.match(soldOut, /Out of stock/);
+    assert.match(soldOut, /<button[^>]*disabled[^>]*>Out of stock<\/button>/);
+    assert.match(soldOut, /Image unavailable/);
+    assert.match(soldOut, /Product-specific warranty terms have not been provided/);
+    assert.doesNotMatch(soldOut, /id="product-quantity"|<s>PKR/);
+
+    for (const slug of ["unpublished", "unknown"]) {
+      const missing = await fetch(`${baseUrl}/products/${slug}`);
+      assert.equal(missing.status, 404);
+      assert.match(await missing.text(), /Page not found/);
+    }
+    const unavailable = (await (await fetch(`${baseUrl}/products/unavailable`)).text()).split("<script")[0];
+    assert.match(unavailable, /Product details could not be loaded/);
+    assert.match(unavailable, /Try again/);
+    assert.doesNotMatch(unavailable, /PKR(?:\s|<!-- -->)*9999\.00/);
+  } finally {
+    detailReplies.clear();
+  }
 });
 
 test("homepage renders its first promotion and static sections without catalog records", async () => {
