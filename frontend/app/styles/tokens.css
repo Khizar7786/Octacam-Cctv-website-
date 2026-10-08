@@ -85,6 +85,7 @@
   --page-gutter: clamp(0.75rem, 2vw, 1.25rem);
   --header-search-max: 42rem;
   --header-row-height: 4rem;
+  --header-reveal-shadow: 0 4px 16px rgb(14 42 80 / 12%);
   --catalog-sidebar-width: 17rem;
   --product-card-max: 16rem;
   --sale-badge: #367b43;
@@ -110,5 +111,6 @@
   --motion-duration-fast: 140ms;
   --motion-duration-standard: 220ms;
   --motion-duration-drawer: 260ms;
+  --motion-duration-header: 240ms;
   --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }

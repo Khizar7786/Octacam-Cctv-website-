@@ -112,7 +112,7 @@
 }
 
 .skip-link {
-  position: absolute;
+  position: fixed;
   z-index: 50;
   top: 1rem;
   left: 1rem;
@@ -151,4 +151,51 @@
 .header-search:focus-within {
   border-color: var(--ring);
   box-shadow: var(--search-focus-shadow);
+}
+
+/* Keep the header's space in the page: scrolling never shifts the catalog. */
+.site-header {
+  position: relative;
+  z-index: 30;
+  max-height: 100dvh;
+  overflow-y: auto;
+}
+
+.site-header[data-scroll-state="hidden"] {
+  position: sticky;
+  top: calc(-1 * var(--site-header-height));
+}
+
+.site-header[data-scroll-state="visible"] {
+  position: sticky;
+  top: 0;
+  box-shadow: var(--header-reveal-shadow);
+  animation: header-slide-in var(--motion-duration-header) var(--motion-ease-standard);
+}
+
+.site-header[data-panel-open="true"] {
+  overscroll-behavior: contain;
+}
+
+/* Reveal focused controls immediately, including Shift+Tab into a hidden header. */
+.site-header:focus-within {
+  position: sticky;
+  top: 0;
+  animation: none;
+}
+
+html:has(.site-header[data-scroll-state="visible"]),
+html:has(.site-header:focus-within) {
+  scroll-padding-top: var(--site-header-height);
+}
+
+@keyframes header-slide-in {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header {
+    animation: none !important;
+  }
 }

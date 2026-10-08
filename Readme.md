@@ -10,6 +10,8 @@ The frontend commands below cover lint, independent typechecking of `.ts`/`.tsx`
 
 See the [frontend readiness review](Docs/frontend-readiness.md) for the 2 October 2026 repository inventory, verified OpenAPI coverage, integration gaps, and checks performed. Guest survey screen behavior and acceptance checks are in [UX section 10.1](Docs/ux-spec.md#101-private-guest-survey-status). Current guest receipt/email URLs lead to JSON tracking APIs; their handoff to customer-facing pages remains a separate integration task.
 
+The header scrolls away with the page and slides back into view when scrolling upward. It stays visible during header keyboard interaction and while the mobile menu/search is open; reduced motion disables the slide. To review it, scroll past the header at phone, tablet, and desktop widths, reverse direction, and try small scroll movements, keyboard focus, and a long mobile menu.
+
 ## Run the frontend locally
 
 Use Node **22.15.0+ on the 22.x line, or Node 24+**, and npm. This workspace was verified with Node 22.15.0 and npm 10.9.2. Dependency versions are pinned in `frontend/package-lock.json`. React Router 7 and Vite 7 support this existing Node installation; the current Router 8 release requires newer Node and is not needed for this slice.

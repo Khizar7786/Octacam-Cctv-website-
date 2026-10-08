@@ -705,6 +705,8 @@ test("shared navigation exposes honest, non-indexed destinations without unverif
   const home = await (await fetch(baseUrl)).text();
   assert.match(home, /aria-label="Storefront"/);
   assert.match(home, /aria-label="Mobile storefront"/);
+  assert.match(home, /<header[^>]*data-scroll-state="flow"/);
+  assert.match(home, /data-panel-open="false"/);
   assert.match(home, /Details pending verification/);
   assert.doesNotMatch(home, /href="(?:mailto:|tel:|https:\/\/wa\.me\/)/);
 

@@ -3,6 +3,7 @@ import { Link, useLocation, useRouteLoaderData } from "react-router";
 import { OctacamWordmark } from "~/components/brand/octacam-logo";
 import { Container } from "~/components/layout/container";
 import { HeaderSearch } from "~/components/layout/header-search";
+import { useScrollHeader } from "~/components/layout/use-scroll-header";
 import { StoreIcon, type StoreIconName } from "~/components/ui/store-icon";
 import { brandLinks, categoryLinks, policyLinks } from "~/config/storefront";
 import { cn } from "~/lib/utils";
@@ -72,6 +73,7 @@ export function SiteHeader() {
   const visibleBrandLinks = active?.brandLinks ?? brandLinks.filter((link) => link.to === "/brands");
   const visibleCategoryLinks = active?.categoryLinks ?? [];
   const [openPanel, setOpenPanel] = useState<Panel>(null);
+  const { headerRef, mode } = useScrollHeader(openPanel !== null);
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
   const menuClose = useRef<HTMLButtonElement>(null);
@@ -127,7 +129,7 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="border-b border-border bg-card">
+    <header className="site-header border-b border-border bg-card" data-panel-open={openPanel !== null} data-scroll-state={mode} ref={headerRef}>
       <div className="bg-header-strip">
         <Container className="py-1 text-center text-xs text-navigation-foreground">
           Storefront in development <span aria-hidden="true">·</span> Free site surveys are for Lahore; installation is quoted afterward.
