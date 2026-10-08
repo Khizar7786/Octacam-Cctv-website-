@@ -143,6 +143,8 @@ Staff can inspect `GET /api/v1/staff/overview/` and the paginated `GET /api/v1/s
 
 Visitors can list active brands/categories and retrieve them by slug. Staff can list all entries, create them, and edit or deactivate them by ID using a Bearer access token. Lists return 20 entries per page. See [the endpoint and Swagger walkthrough](Docs/catalog-api.md) for request examples and expected permission responses. Apply the catalog migration with `python manage.py migrate` before trying these routes.
 
+Staff brand POST/PATCH also accept optional PNG, JPEG, or WebP `logo` uploads up to 2 MB using multipart form data, while retaining JSON taxonomy edits. Remove a logo with JSON `{"logo": null}` or `remove_logo=true`; omitting these fields preserves it. Public and staff brand responses include nullable `logo_url` from configured storage. Files use ignored local media in development and the production object-storage backend. See [brand logo API details](Docs/catalog-api.md#brand-logos). Frontend logo display/upload controls remain separate work.
+
 Staff can create product drafts, configure typed specifications per category, assign specification values, upload and order images, publish products, and make reasoned stock adjustments with a movement history. Visitors can search, filter, sort, list, and retrieve published products with image metadata; published products remain visible at zero stock. Filter metadata is available at `/api/v1/catalog/filters/`. Local media files are stored in ignored `backend/media/` and served at `/media/` by Django only in development. See [the product catalog API walkthrough](Docs/product-draft-api.md).
 
 ## COD checkout API

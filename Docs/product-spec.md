@@ -70,6 +70,7 @@ The booked appointment is **a site survey, not a guaranteed installation appoint
 - Launch categories are cameras, DVR/NVR recorders, surveillance storage, and essential CCTV accessories.
 - Each separately sellable model or capacity has its own product listing, price, and stock count. The MVP does not offer selectable product variants on one page or bundled kits.
 - Staff can assign each product a category, brand, model/SKU, name, images, short and full descriptions, relevant technical specifications, regular price, optional sale price, stock quantity, and publication status.
+- Staff can optionally upload, replace, or remove a brand logo. Brand logo uploads accept PNG, JPEG, or WebP files up to 2 MB; a logo is not required to create or activate a brand.
 - Product pages show the current selling price and, when a valid sale price exists, the regular price for comparison. Prices are displayed in PKR.
 - Product pages show whether the item is available. Out-of-stock products remain visible but cannot be added to the cart.
 - Descriptions and specifications must distinguish factual product capabilities from marketing copy. Unsupported compatibility, warranty, or performance claims must not be invented.

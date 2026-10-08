@@ -153,22 +153,28 @@ class StaffTaxonomyUpdate(generics.UpdateAPIView):
 
 @extend_schema_view(
     get=extend_schema(responses={200: BrandSerializer(many=True), 401: ApiErrorSerializer, 403: ApiErrorSerializer}),
-    post=extend_schema(responses={201: BrandSerializer, 400: ApiErrorSerializer,
+    post=extend_schema(description="Create a brand with an optional PNG, JPEG, or WebP logo (maximum 2 MB). "
+                                  "Use multipart/form-data for a file; JSON remains supported for other fields.",
+                       responses={201: BrandSerializer, 400: ApiErrorSerializer,
                                   401: ApiErrorSerializer, 403: ApiErrorSerializer}),
 )
 class StaffBrandList(StaffTaxonomyList):
     serializer_class = BrandSerializer
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         return get_brands(include_inactive=True)
 
 
-@extend_schema_view(patch=extend_schema(responses={
+@extend_schema_view(patch=extend_schema(description="Edit a brand or replace its logo using multipart/form-data. "
+                                      "Remove the logo with remove_logo=true or JSON logo=null. "
+                                      "Omitting both fields preserves the logo.", responses={
     200: BrandSerializer, 400: ApiErrorSerializer, 401: ApiErrorSerializer,
     403: ApiErrorSerializer, 404: ApiErrorSerializer,
 }))
 class StaffBrandUpdate(StaffTaxonomyUpdate):
     serializer_class = BrandSerializer
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         return get_brands(include_inactive=True)

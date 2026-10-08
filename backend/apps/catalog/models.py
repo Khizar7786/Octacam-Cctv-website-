@@ -21,7 +21,7 @@ class Taxonomy(models.Model):
 
 
 class Brand(Taxonomy):
-    pass
+    logo = models.ImageField(upload_to="brands/", blank=True)
 
 
 class Category(Taxonomy):

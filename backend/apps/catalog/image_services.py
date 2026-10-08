@@ -20,11 +20,13 @@ IMAGE_FORMATS = {
 }
 
 
-def prepare_product_image(upload):
+def prepare_image(upload, *, max_bytes, error_field):
+    """Decode and normalize catalog uploads using a caller-specific size limit."""
+    size_limit = f"{max_bytes / (1024 * 1024):g} MB"
     if upload.content_type not in {mime for mime, _ in IMAGE_FORMATS.values()}:
-        raise ValidationError({"image": ["Upload a JPEG, PNG, or WebP image."]})
-    if upload.size > settings.PRODUCT_IMAGE_MAX_BYTES:
-        raise ValidationError({"image": ["The image exceeds the 5 MB upload limit."]})
+        raise ValidationError({error_field: ["Upload a JPEG, PNG, or WebP image."]})
+    if upload.size > max_bytes:
+        raise ValidationError({error_field: [f"The image exceeds the {size_limit} upload limit."]})
 
     try:
         content = upload.read()
@@ -60,12 +62,16 @@ def prepare_product_image(upload):
                 normalized.save(output, format=image_format, **save_options)
     except (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombWarning,
             Image.DecompressionBombError):
-        raise ValidationError({"image": ["The file is not a safe, decodable image of the declared type."]}) from None
+        raise ValidationError({error_field: ["The file is not a safe, decodable image of the declared type."]}) from None
 
-    if output.tell() > settings.PRODUCT_IMAGE_MAX_BYTES:
-        raise ValidationError({"image": ["The normalized image exceeds the 5 MB limit."]})
+    if output.tell() > max_bytes:
+        raise ValidationError({error_field: [f"The normalized image exceeds the {size_limit} limit."]})
     extension = IMAGE_FORMATS[image_format][1]
     return ContentFile(output.getvalue()), extension, width, height
+
+
+def prepare_product_image(upload):
+    return prepare_image(upload, max_bytes=settings.PRODUCT_IMAGE_MAX_BYTES, error_field="image")
 
 
 def _store_image(*, product_id, content, extension):

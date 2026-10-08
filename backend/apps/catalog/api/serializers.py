@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.catalog.brand_services import save_brand
 from apps.catalog.models import Brand, Category, InventoryMovement, Product, ProductImage, SpecificationChoice, SpecificationDefinition
 from apps.catalog.services import (
     create_product_draft,
@@ -24,8 +25,35 @@ class TaxonomySerializer(serializers.ModelSerializer):
 
 
 class BrandSerializer(TaxonomySerializer):
+    # Multipart omission must preserve the same creation default as JSON.
+    is_active = serializers.BooleanField(required=False, default=True)
+    logo = serializers.FileField(
+        required=False, allow_null=True, write_only=True,
+        help_text="PNG, JPEG, or WebP logo up to 2 MB. Send null in JSON to remove it.",
+    )
+    remove_logo = serializers.BooleanField(
+        required=False, write_only=True,
+        help_text="Send true to remove the current logo, including in multipart requests.",
+    )
+    logo_url = serializers.SerializerMethodField()
+
     class Meta(TaxonomySerializer.Meta):
         model = Brand
+        fields = (*TaxonomySerializer.Meta.fields, "logo", "remove_logo", "logo_url")
+
+    def get_logo_url(self, obj) -> str | None:
+        return obj.logo.url if obj.logo else None
+
+    def validate(self, attrs):
+        if attrs.get("remove_logo") and attrs.get("logo") is not None:
+            raise serializers.ValidationError({"logo": ["Upload a logo or remove it, not both."]})
+        return attrs
+
+    def create(self, validated_data):
+        return save_brand(instance=Brand(), data=validated_data)
+
+    def update(self, instance, validated_data):
+        return save_brand(instance=instance, data=validated_data)
 
 
 class CategorySerializer(TaxonomySerializer):

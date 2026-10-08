@@ -1027,6 +1027,7 @@ slug
 description
 is_active
 sort_order
+logo optional
 created_at
 updated_at
 ```
@@ -1043,6 +1044,10 @@ Inactive brands do not appear publicly.
 Prefer deactivation over deleting a brand referenced by products or historical data.
 
 ---
+
+Brand logos are optional `ImageField` references under `brands/`. Existing staff brand POST/PATCH endpoints accept JSON, multipart form data, and form-encoded fields. Multipart `logo` uploads accept PNG, JPEG, or WebP up to 2 MB, reuse the product image decoder/dimension limits and metadata removal, and receive unique storage keys rather than client filenames. JSON `logo: null` or `remove_logo: true` removes a logo; multipart callers use `remove_logo=true`. Uploading and removing in one request is rejected. Omitting both fields retains the current logo.
+
+Public and staff brand responses expose nullable `logo_url` from the field's configured storage; upload/removal inputs are write-only. `save_brand` locks the brand for updates and saves taxonomy/logo changes together. Old-file deletion runs only after commit; a failed database save cleans up its new upload. As with existing product-image uploads, a rollback in an enclosing transaction can leave an unreferenced new file, and a storage deletion failure is logged without undoing the committed database change. The previous referenced file is retained on rollback. No filesystem paths or storage provider are hardcoded. This slice implements the backend contract; storefront logo rendering and staff upload controls remain later frontend work.
 
 # 20. Category
 
@@ -2949,11 +2954,11 @@ Historical order information must never disappear because a catalog item is remo
 
 # 63. Media storage
 
-Production product media uses S3-compatible object storage.
+Production product and brand-logo media uses S3-compatible object storage.
 
 Provider selection is deliberately deferred.
 
-For local development, validated product images use Django's filesystem storage under ignored `backend/media/`. The development URL configuration serves `/media/` only when `DEBUG` is true. Production requires a separately configured object-storage backend via `DJANGO_MEDIA_STORAGE_BACKEND`; it must not serve or persist product media on the application filesystem. The chosen backend must provide a public, cacheable image URL when configured for deployment.
+For local development, validated product images and brand logos use Django's filesystem storage under ignored `backend/media/`. The development URL configuration serves `/media/` only when `DEBUG` is true. Production requires a separately configured object-storage backend via `DJANGO_MEDIA_STORAGE_BACKEND`; it must not serve or persist product media on the application filesystem. The chosen backend must provide a public, cacheable image URL when configured for deployment.
 
 Examples of provider categories include:
 
