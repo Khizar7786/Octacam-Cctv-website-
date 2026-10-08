@@ -10,6 +10,7 @@ export interface PublicTaxonomy {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  logo_url: string | null;
 }
 
 export interface FilterOption {
@@ -175,6 +176,7 @@ function parseTaxonomy(value: unknown): PublicTaxonomy {
     sort_order: item.sort_order as number,
     created_at: string(item.created_at),
     updated_at: string(item.updated_at),
+    logo_url: item.logo_url == null ? null : string(item.logo_url),
   };
 }
 

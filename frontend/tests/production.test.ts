@@ -20,10 +20,11 @@ let output = "";
 let catalogStatus = 200;
 let catalogReply: unknown = { count: 0, next: null, previous: null, results: [] };
 let catalogResponder: ((path: string) => unknown) | null = null;
+let brandDetailStatus = 200;
 const detailReplies = new Map<string, { status: number; body: unknown }>();
-const taxonomy = (id: number, name: string, slug: string, is_active = true) => ({
+const taxonomy = (id: number, name: string, slug: string, is_active = true, logo_url: string | null = null) => ({
   id, name, slug, description: "", is_active, sort_order: id,
-  created_at: "2026-10-05T00:00:00Z", updated_at: "2026-10-05T00:00:00Z",
+  created_at: "2026-10-05T00:00:00Z", updated_at: "2026-10-05T00:00:00Z", logo_url,
 });
 let brands = [taxonomy(1, "Hikvision", "hikvision"), taxonomy(2, "Dahua", "dahua")];
 const categories = [taxonomy(1, "Cameras", "cameras"), taxonomy(2, "Recorders", "recorders"), taxonomy(3, "Storage", "storage"), taxonomy(4, "Accessories", "accessories")];
@@ -54,6 +55,11 @@ before(async () => {
     const url = new URL(request.url ?? "/", "http://localhost");
     const taxonomyMatch = url.pathname.match(/^\/api\/v1\/catalog\/(brands|categories)\/(?:([^/]+)\/)?$/);
     if (taxonomyMatch) {
+      if (taxonomyMatch[1] === "brands" && taxonomyMatch[2] && brandDetailStatus !== 200) {
+        response.writeHead(brandDetailStatus, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ error: { code: "UNAVAILABLE", message: "Unavailable", fields: {} } }));
+        return;
+      }
       const items = (taxonomyMatch[1] === "brands" ? brands : categories).filter((item) => item.is_active);
       const detail = taxonomyMatch[2] ? items.find((item) => item.slug === taxonomyMatch[2]) : null;
       const pageNumber = Number(url.searchParams.get("page") ?? "1");
@@ -569,10 +575,17 @@ test("product detail renders the published backend record in initial HTML", asyn
     warranty_text: "Supplier-provided warranty text", updated_at: "2026-10-05T00:00:00Z",
   };
   detailReplies.set("cam-11", { status: 200, body: product });
+  const originalBrands = brands;
+  brands = [taxonomy(1, "Hikvision", "hikvision", true, "/media/brands/hikvision.webp"), taxonomy(2, "Dahua", "dahua")];
+  const related = { ...product, id: 13, sku: "CAM-13", slug: "cam-13", name: "Related published camera" };
+  catalogReply = { count: 4, next: null, previous: null, results: [product, related, { ...related, id: 16, sku: "CAM-16", slug: "cam-16", name: "Another related camera" }, { ...related, id: 14, slug: "storage-14", category: { id: 3, name: "Storage", slug: "storage" } }] };
+  const relatedRequests: string[] = [];
+  catalogResponder = (path) => { relatedRequests.push(path); return catalogReply; };
+  detailReplies.set("single-image", { status: 200, body: { ...product, id: 15, slug: "single-image", images: [image(1, "Front of camera", 0)], short_description: "", full_description: "", specifications: [], warranty_text: "" } });
   detailReplies.set("sold-out", { status: 200, body: {
     ...product, id: 12, sku: "DRV-12", slug: "sold-out", name: "Published sold-out recorder",
     stock_quantity: 0, is_in_stock: false, regular_price: "5000.00", sale_price: "5000.00", selling_price: "5000.00",
-    primary_image: null, images: [], specifications: [], warranty_text: "",
+    primary_image: null, images: [], specifications: [], warranty_text: "", short_description: "", full_description: "",
   } });
   detailReplies.set("unavailable", { status: 503, body: { error: { code: "CATALOG_UNAVAILABLE", message: "Unavailable", fields: {} } } });
   try {
@@ -589,15 +602,27 @@ test("product detail renders the published backend record in initial HTML", asyn
     assert.match(html, /alt="Front of camera"/);
     assert.match(html, /aria-label="View image 2: Camera connectors"/);
     assert.match(html, /aria-pressed="true"/);
+    assert.match(html, /aria-label="Previous product image"/);
+    assert.match(html, /aria-label="Next product image"/);
+    assert.match(html, /src="\/media\/brands\/hikvision.webp"/);
+    assert.match(html, /alt="Hikvision logo"/);
+    assert.match(html, /class="breadcrumb"/);
+    assert.match(html, /href="#product-specifications"/);
+    assert.match(html, /Related published camera/);
+    assert.match(html, /aria-label="Next related products"/);
+    assert.ok(relatedRequests.some((path) => new URL(path, "http://test").searchParams.get("category") === "cameras"));
+    assert.doesNotMatch(html, /href="\/products\/cam-11"|href="\/products\/storage-14"|Customer Reviews|Last chance|Buy now|Add to wishlist/);
     assert.match(html, /PKR(?:\s|<!-- -->)*9999\.00/);
-    assert.match(html, /<s>PKR(?:\s|<!-- -->)*12000\.00<\/s>/);
+    assert.match(html, /<s><span class="sr-only">Regular price: <\/span>PKR(?:\s|<!-- -->)*12000\.00<\/s>/);
     assert.match(html, /max="3"/);
     assert.match(html, /3 available when checked/);
     assert.match(html, /Resolution/);
     assert.match(html, /4 MP/);
     assert.match(html, /Outdoor use/);
     assert.match(html, /Supplier-provided warranty text/);
-    assert.match(html, /Support contact details are pending verification/);
+    assert.match(html, /Questions about this product\? Contact page \(coming soon\)/);
+    assert.match(html, /aria-label="Decrease quantity"/);
+    assert.match(html, /aria-label="Increase quantity"/);
     assert.match(html, /<button[^>]*disabled[^>]*>Add to cart \(coming soon\)<\/button>/);
     assert.doesNotMatch(html.split("<article")[1]?.split("</article>")[0] ?? "", /href="\/cart"|Free shipping|Guaranteed compatibility/);
 
@@ -605,8 +630,17 @@ test("product detail renders the published backend record in initial HTML", asyn
     assert.match(soldOut, /Out of stock/);
     assert.match(soldOut, /<button[^>]*disabled[^>]*>Out of stock<\/button>/);
     assert.match(soldOut, /Image unavailable/);
-    assert.match(soldOut, /Product-specific warranty terms have not been provided/);
-    assert.doesNotMatch(soldOut, /id="product-quantity"|<s>PKR/);
+    assert.doesNotMatch(soldOut, /id="product-quantity"|product-detail-sale|Warranty information|id="product-warranty"|id="product-description"|id="product-specifications"|aria-label="Next product image"/);
+
+    catalogStatus = 503;
+    brandDetailStatus = 503;
+    const optionalFailure = (await (await fetch(`${baseUrl}/products/cam-11`)).text()).split("<script")[0];
+    assert.match(optionalFailure, /PKR(?:\s|<!-- -->)*9999\.00/);
+    assert.match(optionalFailure, /aria-label="Hikvision products"/);
+    assert.doesNotMatch(optionalFailure, /Hikvision logo|related-products-heading|Product details could not be loaded/);
+    const singleImage = (await (await fetch(`${baseUrl}/products/single-image`)).text()).split("<script")[0];
+    assert.match(singleImage, /alt="Front of camera"/);
+    assert.doesNotMatch(singleImage, /Next product image|Previous product image|Choose a product image|id="product-description"|id="product-specifications"|id="product-warranty"|Product-specific warranty terms have not been provided/);
 
     for (const slug of ["unpublished", "unknown"]) {
       const missing = await fetch(`${baseUrl}/products/${slug}`);
@@ -619,6 +653,11 @@ test("product detail renders the published backend record in initial HTML", asyn
     assert.doesNotMatch(unavailable, /PKR(?:\s|<!-- -->)*9999\.00/);
   } finally {
     detailReplies.clear();
+    brands = originalBrands;
+    catalogReply = { count: 0, next: null, previous: null, results: [] };
+    catalogResponder = null;
+    catalogStatus = 200;
+    brandDetailStatus = 200;
   }
 });
 

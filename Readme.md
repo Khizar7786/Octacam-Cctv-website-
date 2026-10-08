@@ -32,6 +32,8 @@ The shared shell has an approved-logo header, brand-first and category navigatio
 
 `OCTACAM_API_ORIGIN` configures the server-side Django origin and defaults to `http://127.0.0.1:8000` in local development. It must be an HTTP(S) origin without a path and is required when `NODE_ENV=production`. The variable has no `VITE_` prefix and lives only in server modules and Vite's server configuration, so it is not exposed to browser bundles. Browser requests always use relative `/api/v1/` paths. Vite proxies `/api/v1/` and development `/media/` product images to Django locally; production still needs documented same-origin API and durable media routing. Authentication, token refresh, CSRF handling, cart, checkout, booking, and staff UI remain separate slices.
 
+Product details use a large manual image carousel with thumbnails and keyboard controls, a brand logo from the existing upload API (or the brand name), a compact quantity stepper, and black breadcrumbs. Empty description/specification/warranty sections are omitted. The related-products carousel uses genuine other records from the same category; optional logo/related API failures leave the product usable. Both carousels remain manual and respect reduced motion; product photos and full factual content are present in SSR. Add to cart remains disabled until the cart slice is implemented.
+
 From `frontend/`, run:
 
 ```powershell

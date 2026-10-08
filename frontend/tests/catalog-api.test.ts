@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { getPublicProductDetail, getPublicProductPage, getPublicProducts, hasValidSale } from "../app/features/catalog/api.ts";
-import { clampQuantity } from "../app/features/catalog/product.ts";
+import { clampQuantity, galleryImageIndex } from "../app/features/catalog/product.ts";
 import { ApiError, apiPath, createApiClient } from "../app/lib/api/client.ts";
 
 const product = {
@@ -19,6 +19,14 @@ const product = {
   is_in_stock: true,
   primary_image: null,
 };
+
+test("manual product gallery wraps in both directions and handles a single or missing image", () => {
+  assert.equal(galleryImageIndex(2, 1, 3), 0);
+  assert.equal(galleryImageIndex(0, -1, 3), 2);
+  assert.equal(galleryImageIndex(1, 1, 3), 2);
+  assert.equal(galleryImageIndex(0, 1, 1), 0);
+  assert.equal(galleryImageIndex(0, -1, 0), 0);
+});
 
 test("preserves decimal strings and normalizes internal pagination links", async () => {
   const requestedUrls: string[] = [];

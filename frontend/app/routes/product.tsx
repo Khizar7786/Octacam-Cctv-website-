@@ -1,7 +1,8 @@
 import { data, useLoaderData, useRevalidator } from "react-router";
 import { ProductDetailPage } from "~/components/catalog/product-detail-page";
 import { buttonStyles } from "~/components/ui/button";
-import { getPublicProductDetail } from "~/features/catalog/api";
+import { getPublicProductDetail, getPublicProducts } from "~/features/catalog/api";
+import { getPublicTaxonomy } from "~/features/catalog/taxonomy";
 import { ApiError } from "~/lib/api/client";
 import { serverApiClient } from "~/lib/api/server-client.server";
 import type { Route } from "./+types/product";
@@ -21,7 +22,22 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!params.slug) throw data(null, { status: 404 });
   try {
     const product = await getPublicProductDetail(serverApiClient, params.slug, request.signal);
-    return { state: "ready" as const, product };
+    const [brand, related] = await Promise.all([
+      getPublicTaxonomy(serverApiClient, "brands", product.brand.slug, request.signal).catch((error: unknown) => {
+        if (request.signal.aborted) throw error;
+        return null;
+      }),
+      getPublicProducts(serverApiClient, { searchParams: new URLSearchParams({ category: product.category.slug }), signal: request.signal }).catch((error: unknown) => {
+        if (request.signal.aborted) throw error;
+        return null;
+      }),
+    ]);
+    return {
+      state: "ready" as const,
+      product,
+      brandLogoUrl: brand?.logo_url ?? null,
+      relatedProducts: (related?.results ?? []).filter((item) => item.id !== product.id && item.category.slug === product.category.slug).slice(0, 10),
+    };
   } catch (error) {
     if (request.signal.aborted) throw error;
     if (error instanceof ApiError && error.status === 404) throw data(null, { status: 404 });
@@ -41,5 +57,5 @@ export default function Product() {
       </section>
     );
   }
-  return <ProductDetailPage key={result.product.slug} product={result.product} />;
+  return <ProductDetailPage brandLogoUrl={result.brandLogoUrl} key={result.product.slug} product={result.product} relatedProducts={result.relatedProducts} />;
 }

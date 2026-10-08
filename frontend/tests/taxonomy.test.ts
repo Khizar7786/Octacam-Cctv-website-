@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getAllPublicBrands } from "../app/features/catalog/taxonomy.ts";
+import { getAllPublicBrands, getPublicTaxonomy } from "../app/features/catalog/taxonomy.ts";
 import { ApiError, createApiClient } from "../app/lib/api/client.ts";
 
 const brand = (id: number) => ({ id, name: `Brand ${id}`, slug: `brand-${id}`, description: "", is_active: true, sort_order: id, created_at: "", updated_at: "" });
+
+test("uploaded brand logo URLs are preserved and missing logos remain optional", async () => {
+  for (const logo of [{ logo_url: "/media/brands/approved.webp" }, { logo_url: null }, {}]) {
+    const client = createApiClient({ fetch: async () => Response.json({ ...brand(1), ...logo }) });
+    const result = await getPublicTaxonomy(client, "brands", "brand-1");
+    assert.equal(result.logo_url, "logo_url" in logo ? logo.logo_url : null);
+  }
+  const malformed = createApiClient({ fetch: async () => Response.json({ ...brand(1), logo_url: 12 }) });
+  await assert.rejects(getPublicTaxonomy(malformed, "brands", "brand-1"), (error: unknown) => error instanceof ApiError && error.code === "UNEXPECTED_API_RESPONSE");
+});
 
 test("navigation collects every brand page in backend order", async () => {
   const requests: string[] = [];

@@ -57,7 +57,8 @@ test("a direct shop request renders the real published catalog state in initial 
     assert.doesNotMatch(visibleHtml, /<article/);
   } else {
     assert.match(visibleHtml, /Published products/);
-    assert.match(visibleHtml, /Model\/SKU:/);
+    assert.match(visibleHtml, /class="product-card-link"/);
+    assert.doesNotMatch(visibleHtml, /Model\/SKU:/);
     assert.match(visibleHtml, /PKR/);
   }
 });
@@ -70,13 +71,23 @@ test("a direct product page follows the real published detail contract", async (
   if (first) {
     const detail = await fetch(`${frontendOrigin}/api/v1/catalog/products/${encodeURIComponent(first.slug)}/`, { signal: AbortSignal.timeout(5_000) });
     assert.equal(detail.status, 200);
-    const product = await detail.json() as { sku: string; selling_price: string; stock_quantity: number };
+    const product = await detail.json() as { sku: string; selling_price: string; stock_quantity: number; brand: { slug: string }; images: unknown[]; warranty_text: string };
     const response = await fetch(`${frontendOrigin}/products/${encodeURIComponent(first.slug)}`, { signal: AbortSignal.timeout(5_000) });
     const html = (await response.text()).split("<script")[0];
     assert.equal(response.status, 200);
     assert.ok(html.includes(product.sku));
     assert.ok(html.includes(product.selling_price));
     assert.ok(html.includes(String(product.stock_quantity)) || product.stock_quantity === 0);
+    assert.match(html, /class="breadcrumb"/);
+    assert.match(html, /class="product-brand"/);
+    if (product.images.length > 1) assert.match(html, /aria-label="Next product image"/);
+    else assert.doesNotMatch(html, /Next product image|Previous product image/);
+    if (!product.warranty_text.trim()) assert.doesNotMatch(html, /id="product-warranty"/);
+    assert.doesNotMatch(html, /Customer Reviews|Last chance|Add to wishlist/);
+    const brandResponse = await fetch(`${frontendOrigin}/api/v1/catalog/brands/${encodeURIComponent(product.brand.slug)}/`, { signal: AbortSignal.timeout(5_000) });
+    assert.equal(brandResponse.status, 200);
+    const brand = await brandResponse.json() as { logo_url: string | null };
+    if (brand.logo_url) assert.ok(html.includes(brand.logo_url), "The product page should use the uploaded brand logo URL.");
   } else {
     const response = await fetch(`${frontendOrigin}/products/octacam-no-such-product`, { signal: AbortSignal.timeout(5_000) });
     assert.equal(response.status, 404);

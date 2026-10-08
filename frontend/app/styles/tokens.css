@@ -92,6 +92,13 @@
   --sale-badge-foreground: #ffffff;
   --product-image-radius: var(--oc-radius-lg);
   --product-title-size: 0.875rem;
+  --product-gallery-max: 42rem;
+  --product-thumbnail-size: 4.5rem;
+  --product-brand-width: 7rem;
+  --product-brand-height: 3rem;
+  --product-heading-size: clamp(1.5rem, 2vw, 2.125rem);
+  --product-detail-gap: clamp(1.5rem, 3vw, 3rem);
+  --product-divider: #e2e8f0;
   --catalog-search-max: 52rem;
   --filter-drawer-width: 25rem;
   --overlay-backdrop: rgb(14 42 80 / 42%);

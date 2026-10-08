@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
 @import "./catalog.css";
+@import "./product.css";
 
 @theme inline {
   --spacing: var(--space-1);

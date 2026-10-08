@@ -1,50 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useRevalidator } from "react-router";
 import { Breadcrumbs } from "./catalog-listing";
+import { ProductGallery } from "./product-gallery";
+import { RelatedProducts } from "./related-products";
 import { buttonStyles } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { StoreIcon, type StoreIconName } from "~/components/ui/store-icon";
 import { contact } from "~/config/storefront";
-import { hasValidSale, type ProductImage, type PublicProductDetail } from "~/features/catalog/api";
+import { hasValidSale, type PublicProduct, type PublicProductDetail } from "~/features/catalog/api";
 import { clampQuantity } from "~/features/catalog/product";
 
-function ProductGallery({ product }: { product: PublicProductDetail }) {
-  const [selected, setSelected] = useState(0);
-  const [failedMainUrl, setFailedMainUrl] = useState<string | null>(null);
-  const [failedThumbnails, setFailedThumbnails] = useState<string[]>([]);
-  const images = product.images;
-  const selectedIndex = Math.min(selected, Math.max(images.length - 1, 0));
-  const image = images[selectedIndex];
-  const imageLabel = (item: ProductImage, index: number) => item.alt_text.trim() || `${product.name}, image ${index + 1}`;
-
+function ProductBrand({ product, logoUrl }: { product: PublicProductDetail; logoUrl: string | null }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   return (
-    <section aria-label="Product images" className="min-w-0">
-      <figure>
-        <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border border-border bg-muted text-sm font-semibold text-muted-foreground">
-          {image && failedMainUrl !== image.image_url ? (
-            <img alt={imageLabel(image, selectedIndex)} className="h-full w-full object-contain" height={image.height} onError={() => setFailedMainUrl(image.image_url)} src={image.image_url} width={image.width} />
-          ) : <span>Image unavailable</span>}
-        </div>
-        {images.length > 1 ? <figcaption className="mt-2 text-sm text-muted-foreground">Image {selectedIndex + 1} of {images.length}</figcaption> : null}
-      </figure>
-      {images.length > 1 ? (
-        <div aria-label="Choose a product image" className="mt-4 flex flex-wrap gap-3" role="group">
-          {images.map((item, index) => (
-            <button
-              aria-label={`View image ${index + 1}: ${imageLabel(item, index)}`}
-              aria-pressed={selectedIndex === index}
-              className={`flex size-20 items-center justify-center overflow-hidden rounded-md border bg-muted text-xs text-muted-foreground ${selectedIndex === index ? "border-primary ring-2 ring-primary" : "border-border-strong"}`}
-              key={item.id}
-              onClick={() => setSelected(index)}
-              type="button"
-            >
-              {failedThumbnails.includes(item.image_url) ? <span>Image unavailable</span> : (
-                <img alt="" className="h-full w-full object-contain" height={item.height} loading="lazy" onError={() => setFailedThumbnails((current) => [...current, item.image_url])} src={item.image_url} width={item.width} />
-              )}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </section>
+    <Link aria-label={`${product.brand.name} products`} className="product-brand" to={`/brands/${encodeURIComponent(product.brand.slug)}`}>
+      {logoUrl && failedUrl !== logoUrl ? <img alt={`${product.brand.name} logo`} onError={() => setFailedUrl(logoUrl)} src={logoUrl} /> : <span>{product.brand.name}</span>}
+    </Link>
   );
 }
 
@@ -54,6 +25,7 @@ function PurchasePanel({ product }: { product: PublicProductDetail }) {
   const previous = useRef({ stock: product.stock_quantity, price: product.selling_price });
   const revalidator = useRevalidator();
   const available = product.stock_quantity > 0;
+  const amount = clampQuantity(quantity, product.stock_quantity);
 
   useEffect(() => {
     if (previous.current.stock === product.stock_quantity && previous.current.price === product.selling_price) return;
@@ -63,105 +35,126 @@ function PurchasePanel({ product }: { product: PublicProductDetail }) {
   }, [product.stock_quantity, product.selling_price]);
 
   return (
-    <section aria-labelledby="purchase-heading" className="min-w-0 rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6">
-      <h2 className="text-lg font-bold" id="purchase-heading">Price and availability</h2>
-      <p className="mt-3 text-3xl font-bold leading-tight">PKR {product.selling_price}</p>
-      {hasValidSale(product) ? <p className="mt-1 text-sm text-muted-foreground">Regular price: <s>PKR {product.regular_price}</s></p> : null}
-      <p className={`mt-4 font-semibold ${available ? "text-success" : "text-error"}`} role="status">
+    <section aria-label="Price and availability" className="product-purchase">
+      <div className="product-detail-price">
+        <p>PKR {product.selling_price}</p>
+        {hasValidSale(product) ? <><s><span className="sr-only">Regular price: </span>PKR {product.regular_price}</s><span className="product-detail-sale">Sale</span></> : null}
+      </div>
+      <p className={`product-stock ${available ? "text-success" : "text-error"}`} role="status">
+        <span aria-hidden="true" className="product-stock-dot" />
         {available ? `In stock · ${product.stock_quantity} available when checked` : "Out of stock"}
       </p>
       {updateNotice ? <p className="mt-3 rounded-md border border-info bg-info-surface p-3 text-sm" role="status">{updateNotice}</p> : null}
-      {available ? (
-        <div className="mt-5 max-w-36">
-          <label className="mb-1 block text-sm font-semibold" htmlFor="product-quantity">Quantity</label>
-          <Input id="product-quantity" inputMode="numeric" max={product.stock_quantity} min={1} onBlur={() => setQuantity(String(clampQuantity(quantity, product.stock_quantity)))} onChange={(event) => setQuantity(event.target.value === "" ? "" : String(clampQuantity(event.target.value, product.stock_quantity)))} step={1} type="number" value={quantity} />
-          <p className="mt-1 text-xs text-muted-foreground">Maximum currently available: {product.stock_quantity}</p>
-        </div>
-      ) : <p className="mt-3 text-sm">This product cannot be purchased while it is out of stock.</p>}
-      <button className={buttonStyles({ className: "mt-5 w-full" })} disabled type="button">{available ? "Add to cart (coming soon)" : "Out of stock"}</button>
-      {available ? <p className="mt-2 text-sm text-muted-foreground">The cart is being built. Selecting a quantity does not add or reserve this item.</p> : null}
-      <button className={buttonStyles({ variant: "outline", className: "mt-5 w-full" })} disabled={revalidator.state === "loading"} onClick={() => revalidator.revalidate()} type="button">
-        {revalidator.state === "loading" ? "Checking availability…" : "Refresh price and stock"}
+      <div className="product-purchase-actions">
+        {available ? (
+          <div>
+            <label className="product-quantity-label" htmlFor="product-quantity">Quantity</label>
+            <div className="product-quantity">
+              <button aria-label="Decrease quantity" disabled={amount <= 1} onClick={() => setQuantity(String(clampQuantity(String(amount - 1), product.stock_quantity)))} type="button"><StoreIcon inheritColor name="minus" /></button>
+              <Input id="product-quantity" inputMode="numeric" max={product.stock_quantity} min={1} onBlur={() => setQuantity(String(clampQuantity(quantity, product.stock_quantity)))} onChange={(event) => setQuantity(event.target.value === "" ? "" : String(clampQuantity(event.target.value, product.stock_quantity)))} step={1} type="number" value={quantity} />
+              <button aria-label="Increase quantity" disabled={amount >= product.stock_quantity} onClick={() => setQuantity(String(clampQuantity(String(amount + 1), product.stock_quantity)))} type="button"><StoreIcon inheritColor name="plus" /></button>
+            </div>
+          </div>
+        ) : null}
+        <button className={buttonStyles({ className: "product-cart-action" })} disabled type="button">{available ? "Add to cart (coming soon)" : "Out of stock"}</button>
+      </div>
+      <p className="product-purchase-note">{available ? "The cart is being built. Selecting a quantity does not add or reserve this item." : "This product cannot be purchased while it is out of stock."}</p>
+      <button className="product-refresh" disabled={revalidator.state === "loading"} onClick={() => revalidator.revalidate()} type="button">
+        <StoreIcon name="refresh" />{revalidator.state === "loading" ? "Checking availability…" : "Refresh price and stock"}
       </button>
-      <div className="mt-6 border-t border-border pt-4 text-sm">
-        <p>Equipment checkout will use cash on delivery. <Link to="/shipping">Shipping policy (coming soon)</Link></p>
-        <p className="mt-2 text-muted-foreground">Final shipping and tax amounts will be shown by checkout when it is available.</p>
+      <div className="product-delivery-note">
+        <StoreIcon badge name="cart" />
+        <div><p className="font-semibold">Cash on delivery for equipment checkout</p><p>Final shipping and tax amounts will be shown at checkout. <Link to="/shipping">Shipping policy (coming soon)</Link></p></div>
       </div>
     </section>
   );
 }
 
-export function ProductDetailPage({ product }: { product: PublicProductDetail }) {
-  const channels = [
-    { label: "WhatsApp", value: contact.whatsapp },
-    { label: "Phone", value: contact.phone },
-    { label: "Email", value: contact.email },
-  ].filter((channel) => channel.value !== null);
+function ProductInformation({ product }: { product: PublicProductDetail }) {
+  const description = product.full_description.trim();
+  const warranty = product.warranty_text.trim();
+  const sections = [
+    ...(description ? [{ id: "description", label: "Description" }] : []),
+    ...(product.specifications.length ? [{ id: "specifications", label: "Specifications" }] : []),
+    ...(warranty ? [{ id: "warranty", label: "Warranty" }] : []),
+  ];
+  if (!sections.length) return null;
 
   return (
-    <article className="space-y-8">
+    <div className="product-information">
+      <nav aria-label="Product information" className="product-section-nav">
+        {sections.map((section) => <a href={`#product-${section.id}`} key={section.id}>{section.label}</a>)}
+      </nav>
+      {description ? (
+        <section aria-labelledby="description-heading" className="product-information-section" id="product-description">
+          <h2 id="description-heading">Product overview</h2>
+          <p className="product-description">{description}</p>
+        </section>
+      ) : null}
+      {product.specifications.length ? (
+        <section aria-labelledby="specifications-heading" className="product-information-section" id="product-specifications">
+          <h2 id="specifications-heading">Technical specifications</h2>
+          <dl className="product-specifications">
+            {product.specifications.map((specification) => (
+              <div key={specification.definition}><dt>{specification.label}</dt><dd>{specification.display_value}</dd></div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+      {warranty ? (
+        <section aria-labelledby="warranty-heading" className="product-information-section" id="product-warranty">
+          <h2 id="warranty-heading">Warranty information</h2>
+          <p className="product-description">{warranty}</p>
+          <Link className="product-text-link" to="/warranty">Warranty policy (coming soon)</Link>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+export function ProductDetailPage({ product, brandLogoUrl, relatedProducts }: { product: PublicProductDetail; brandLogoUrl: string | null; relatedProducts: PublicProduct[] }) {
+  const channels: { label: string; value: typeof contact.whatsapp; icon: StoreIconName }[] = [
+    { label: "WhatsApp", value: contact.whatsapp, icon: "whatsapp" },
+    { label: "Phone", value: contact.phone, icon: "phone" },
+    { label: "Email", value: contact.email, icon: "email" },
+  ];
+  const verifiedChannels = channels.filter((channel) => channel.value !== null);
+
+  return (
+    <article className="product-detail">
       <Breadcrumbs items={[
         { label: "Home", to: "/" },
         { label: "Shop", to: "/shop" },
         { label: product.category.name, to: `/categories/${encodeURIComponent(product.category.slug)}` },
         { label: product.name },
       ]} />
-      <header className="max-w-3xl">
-        <p className="text-sm font-bold text-primary"><Link to={`/brands/${encodeURIComponent(product.brand.slug)}`}>{product.brand.name}</Link> · {product.category.name}</p>
-        <h1 className="mt-2 text-[length:var(--font-size-heading)] font-bold leading-tight">{product.name}</h1>
-        <p className="mt-2 break-all font-mono text-sm text-muted-foreground">Model/SKU: {product.sku}</p>
-        {product.short_description.trim() ? <p className="mt-4 max-w-[var(--reading-max)] text-base">{product.short_description}</p> : null}
-      </header>
-
-      <div className="grid gap-7 lg:grid-cols-[minmax(19rem,0.8fr)_minmax(0,1.2fr)] lg:items-start">
-        <PurchasePanel product={product} />
+      <div className="product-top">
+        <header className="product-identity">
+          <div className="product-identity-topline">
+            <Link className="product-category" to={`/categories/${encodeURIComponent(product.category.slug)}`}>{product.category.name}</Link>
+            <ProductBrand logoUrl={brandLogoUrl} product={product} />
+          </div>
+          <h1>{product.name}</h1>
+          <p className="product-sku">Model/SKU: {product.sku}</p>
+        </header>
         <ProductGallery product={product} />
-      </div>
-
-      <div className="grid gap-8 border-t border-border pt-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]">
-        <div className="space-y-8">
-          {product.full_description.trim() ? (
-            <section aria-labelledby="description-heading">
-              <h2 className="text-xl font-bold" id="description-heading">Product overview</h2>
-              <p className="mt-3 max-w-[var(--reading-max)] whitespace-pre-line">{product.full_description}</p>
-            </section>
-          ) : null}
-          {product.specifications.length ? (
-            <section aria-labelledby="specifications-heading">
-              <h2 className="text-xl font-bold" id="specifications-heading">Technical specifications</h2>
-              <dl className="mt-4 overflow-hidden rounded-lg border border-border bg-card">
-                {product.specifications.map((specification) => (
-                  <div className="grid gap-1 border-b border-border px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-4" key={specification.definition}>
-                    <dt className="text-sm font-semibold text-muted-foreground">{specification.label}</dt>
-                    <dd className="min-w-0 break-words text-sm font-medium">{specification.display_value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ) : null}
-        </div>
-        <div className="space-y-6">
-          <section aria-labelledby="warranty-heading" className="rounded-lg border border-border bg-card p-5">
-            <h2 className="text-lg font-bold" id="warranty-heading">Warranty information</h2>
-            <p className="mt-2 whitespace-pre-line text-sm">{product.warranty_text.trim() || "Product-specific warranty terms have not been provided."}</p>
-            <p className="mt-3 text-sm"><Link to="/warranty">Warranty policy (coming soon)</Link></p>
-          </section>
-          <section aria-labelledby="support-heading" className="rounded-lg border border-border bg-card p-5">
-            <h2 className="text-lg font-bold" id="support-heading">Questions about this product?</h2>
-            {channels.length ? (
-              <ul className="mt-3 space-y-2 text-sm">
-                {channels.map(({ label, value }) => value ? <li key={label}><a href={value.href}>{label}: {value.display}</a></li> : null)}
-              </ul>
-            ) : <p className="mt-2 text-sm text-muted-foreground">Support contact details are pending verification.</p>}
-            <p className="mt-3 text-sm"><Link to="/contact">Contact page (coming soon)</Link></p>
-          </section>
-          <section className="rounded-lg border border-info bg-info-surface p-5 text-sm">
-            <h2 className="text-lg font-bold">Planning a Lahore installation?</h2>
-            <p className="mt-2">A site survey is free in Lahore. Installation is quoted and scheduled separately afterward.</p>
-            <p className="mt-3"><Link to="/surveys">Site survey booking (coming soon)</Link></p>
-          </section>
+        <div className="product-summary">
+          <PurchasePanel product={product} />
+          {product.short_description.trim() ? <p className="product-short-description">{product.short_description}</p> : null}
+          {product.specifications.length ? <dl aria-label="Key product specifications" className="product-key-specifications">{product.specifications.slice(0, 4).map((specification) => <div key={specification.definition}><dt>{specification.label}</dt><dd>{specification.display_value}</dd></div>)}</dl> : null}
+          <div className="product-support">
+            {verifiedChannels.length ? <div className="flex flex-wrap gap-x-4 gap-y-1">{verifiedChannels.map(({ label, value, icon }) => value ? <a href={value.href} key={label}><StoreIcon name={icon} />{label}: {value.display}</a> : null)}</div> : null}
+            <Link to="/contact"><StoreIcon name="contact" />Questions about this product? Contact page (coming soon)</Link>
+          </div>
         </div>
       </div>
+      <ProductInformation product={product} />
+      <aside className="product-survey">
+        <StoreIcon badge name="survey" />
+        <div><h2>Free Lahore site survey</h2><p>Installation is quoted and scheduled separately afterward.</p></div>
+        <Link className="product-text-link" to="/surveys">Site survey booking (coming soon)</Link>
+      </aside>
+      <RelatedProducts category={product.category} products={relatedProducts} />
     </article>
   );
 }
