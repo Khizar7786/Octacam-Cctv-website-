@@ -41,6 +41,15 @@
   --footer-foreground: var(--navigation-foreground);
   --footer-muted: #c4d0df;
 
+  /* Wide promotional hero: dark copy protection over replaceable artwork. */
+  --promo-surface: #071b35;
+  --promo-foreground: #ffffff;
+  --promo-muted: #d0def1;
+  --promo-overlay: rgb(7 27 53 / 88%);
+  --promo-indicator: #788ca7;
+  --promo-title-size: clamp(1.75rem, 3.1vw, 3rem);
+  --promo-banner-height: clamp(20rem, 26vw, 26rem);
+
   /* Charcoal distinguishes the reassurance strip from the adjacent navy footer. */
   --reassurance-surface: #242424;
   --reassurance-foreground: #ffffff;
@@ -142,5 +151,6 @@
   --motion-duration-standard: 220ms;
   --motion-duration-drawer: 260ms;
   --motion-duration-header: 240ms;
+  --motion-duration-promotion: 650ms;
   --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }

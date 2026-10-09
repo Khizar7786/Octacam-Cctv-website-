@@ -1,31 +1,30 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent } from "react";
 import { Link } from "react-router";
-import { promotions } from "~/config/promotions";
+import { promotions, promotionTiming } from "~/config/promotions";
+import { usePromoPlayback } from "./use-promo-playback";
+import "~/styles/promotions.css";
 
-function PromoArtwork({
-  desktopImage,
-  mobileImage,
-}: {
+function PromoArtwork({ desktopImage, mobileImage, eager }: {
   desktopImage: string;
   mobileImage: string;
+  eager: boolean;
 }) {
   const [failed, setFailed] = useState(false);
 
   return (
-    <div className="relative flex min-h-48 items-center justify-center overflow-hidden bg-accent sm:min-h-64 lg:min-h-full">
-      <div className="relative rounded-lg border border-primary/20 bg-card/90 px-6 py-4 text-xl font-bold text-foreground">
-        Octa<span className="text-primary">Cam</span>
-      </div>
+    <div className="promo-artwork" data-image-failed={failed}>
       {!failed ? (
-        <picture className="absolute inset-0">
+        <picture>
           <source media="(max-width: 639px)" srcSet={mobileImage} />
           <img
             alt=""
-            className="h-full w-full object-cover"
-            height={600}
+            fetchPriority={eager ? "high" : "auto"}
+            height={480}
+            loading={eager ? "eager" : "lazy"}
             onError={() => setFailed(true)}
             src={desktopImage}
-            width={960}
+            width={1920}
           />
         </picture>
       ) : null}
@@ -33,61 +32,178 @@ function PromoArtwork({
   );
 }
 
+/** Reserve the full heading's height; screen readers hear the complete text once. */
+function TypewriterTitle({ title, typeOnLoad, active, onComplete }: {
+  title: string;
+  typeOnLoad: boolean;
+  active: boolean;
+  onComplete: (complete: boolean) => void;
+}) {
+  const [length, setLength] = useState<number | null>(null);
+  const characters = Array.from(title);
+
+  useEffect(() => {
+    if (!typeOnLoad) {
+      setLength(null);
+      return;
+    }
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (preference.matches) {
+      onComplete(true);
+      return;
+    }
+
+    let timer = 0;
+    let count = 0;
+    const total = Array.from(title).length;
+    setLength(0);
+    const type = () => {
+      count += 1;
+      setLength(count);
+      if (count < total) timer = window.setTimeout(type, promotionTiming.characterMs);
+      else {
+        setLength(null);
+        onComplete(true);
+      }
+    };
+    timer = window.setTimeout(type, promotionTiming.typingDelayMs);
+    const finish = () => {
+      if (!preference.matches) return;
+      window.clearTimeout(timer);
+      setLength(null);
+      onComplete(true);
+    };
+    preference.addEventListener("change", finish);
+    return () => {
+      window.clearTimeout(timer);
+      preference.removeEventListener("change", finish);
+    };
+    // This runs once on the initial page load, never when slides rotate or hover ends.
+  }, [title, typeOnLoad, onComplete]);
+
+  const Heading = active ? "h1" : "h2";
+  const typing = active && length !== null;
+  return (
+    <Heading className="promo-title">
+      <span className="sr-only">{title}</span>
+      <span aria-hidden="true" className="promo-title-measure">{title}</span>
+      <span aria-hidden="true" className="promo-title-visual">
+        {typing ? characters.slice(0, length).join("") : title}
+        {typing ? <span className="promo-cursor" /> : null}
+      </span>
+    </Heading>
+  );
+}
+
 export function PromoCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const promotion = promotions[activeIndex];
+  const [typingComplete, setTypingComplete] = useState(false);
+  const playback = usePromoPlayback(promotions.length, activeIndex, () => {
+    setActiveIndex((current) => (current + 1) % promotions.length);
+  });
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const suppressClick = useRef(false);
+  const clickTimer = useRef(0);
 
-  function move(amount: number) {
-    setActiveIndex((current) => (current + amount + promotions.length) % promotions.length);
+  useEffect(() => () => window.clearTimeout(clickTimer.current), []);
+
+  function select(index: number) {
+    setTypingComplete(true);
+    setActiveIndex((index + promotions.length) % promotions.length);
+  }
+
+  function finishSwipe(event: PointerEvent<HTMLElement>) {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    if (!start) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    select(activeIndex + (dx < 0 ? 1 : -1));
+    // A horizontal swipe over a link must not also navigate to that campaign.
+    suppressClick.current = true;
+    window.clearTimeout(clickTimer.current);
+    clickTimer.current = window.setTimeout(() => { suppressClick.current = false; }, 300);
   }
 
   return (
-    <section aria-label="Promotions" className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
-        <div className="flex flex-col justify-center p-5 sm:p-8 lg:min-h-[22rem] lg:p-10">
-          <p className="mb-3 text-sm font-semibold text-primary">OctaCam · CCTV equipment</p>
-          <h1 className="max-w-xl text-[length:var(--font-size-display)] font-bold leading-[var(--line-height-tight)] tracking-[-0.045em]">
-            {promotion.title}
-          </h1>
-          <p className="mt-3 max-w-lg text-base text-muted-foreground sm:text-lg">{promotion.description}</p>
-          <Link
-            className="mt-5 inline-flex min-h-11 w-fit items-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground no-underline hover:bg-primary-hover hover:text-primary-foreground"
-            to={promotion.to}
-          >
-            {promotion.actionLabel}
-            <span aria-hidden="true" className="ml-3">→</span>
-          </Link>
+    <section
+      aria-label="Featured promotions"
+      aria-roledescription="carousel"
+      className="promo-carousel"
+      data-running={playback.running}
+      onClickCapture={(event) => {
+        if (suppressClick.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          suppressClick.current = false;
+        }
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) playback.setFocused(false);
+      }}
+      onFocusCapture={() => playback.setFocused(true)}
+      onMouseEnter={() => playback.setHovered(true)}
+      onMouseLeave={() => playback.setHovered(false)}
+      onPointerCancel={() => { swipeStart.current = null; }}
+      onPointerDown={(event) => {
+        if (event.pointerType === "touch" && !(event.target as HTMLElement).closest("button")) {
+          swipeStart.current = { x: event.clientX, y: event.clientY };
+        }
+      }}
+      onPointerUp={finishSwipe}
+      ref={playback.sectionRef}
+      style={{ "--promo-interval": `${promotionTiming.slideMs}ms` } as CSSProperties}
+    >
+      <div className="promo-window">
+        <div
+          aria-live={playback.running ? "off" : "polite"}
+          className="promo-track"
+          id="promotion-slides"
+          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+        >
+          {promotions.map((promotion, index) => (
+            <div
+              aria-hidden={index !== activeIndex}
+              aria-label={`${index + 1} of ${promotions.length}`}
+              aria-roledescription="slide"
+              className="promo-slide"
+              inert={index !== activeIndex}
+              key={promotion.id}
+              role="group"
+            >
+              <PromoArtwork desktopImage={promotion.desktopImage} mobileImage={promotion.mobileImage} eager={index === 0} />
+              <div className="promo-copy">
+                <p className="promo-label">{promotion.label}</p>
+                <TypewriterTitle
+                  active={index === activeIndex}
+                  onComplete={setTypingComplete}
+                  typeOnLoad={index === 0 && !typingComplete}
+                  title={promotion.title}
+                />
+                <p className="promo-description">{promotion.description}</p>
+                <Link className="promo-action" to={promotion.to}>{promotion.actionLabel}</Link>
+              </div>
+            </div>
+          ))}
         </div>
-        <PromoArtwork
-          key={promotion.id}
-          desktopImage={promotion.desktopImage}
-          mobileImage={promotion.mobileImage}
-        />
       </div>
 
       {promotions.length > 1 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-2 sm:px-8 lg:px-10">
-          <p aria-live="polite" className="text-sm text-muted-foreground">
-            Promotion {activeIndex + 1} of {promotions.length}: <span className="font-semibold text-foreground">{promotion.title}</span>
-          </p>
-          <div className="flex items-center gap-2">
+        <div aria-label="Choose a promotion" className="promo-pagination" role="group">
+          {promotions.map((promotion, index) => (
             <button
-              aria-label="Previous promotion"
-              className="min-h-11 rounded-md border border-border-strong px-3 text-sm font-semibold text-foreground hover:bg-accent"
-              onClick={() => move(-1)}
+              aria-controls="promotion-slides"
+              aria-label={`Show promotion ${index + 1}: ${promotion.title}`}
+              aria-pressed={index === activeIndex}
+              className="promo-picker"
+              key={promotion.id}
+              onClick={() => select(index)}
               type="button"
             >
-              Previous
+              <span className="promo-picker-track" key={`${index}-${activeIndex}`} />
             </button>
-            <button
-              aria-label="Next promotion"
-              className="min-h-11 rounded-md border border-border-strong px-3 text-sm font-semibold text-foreground hover:bg-accent"
-              onClick={() => move(1)}
-              type="button"
-            >
-              Next
-            </button>
-          </div>
+          ))}
         </div>
       ) : null}
     </section>

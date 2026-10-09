@@ -668,9 +668,19 @@ test("product detail renders the published backend record in initial HTML", asyn
 });
 
 test("homepage renders its first promotion and static sections without catalog records", async () => {
-  const html = await (await fetch(baseUrl)).text();
-  assert.match(html, /Build around the equipment you need/);
-  assert.doesNotMatch(html, /Planning a CCTV setup in Lahore\?/);
+  const html = (await (await fetch(baseUrl)).text()).split("<script")[0];
+  const carousel = html.match(/<section\b[^>]*class="promo-carousel"[^>]*>(.*?)<\/section>/s)?.[1];
+  assert.ok(carousel);
+  assert.match(html, /class="promo-carousel" data-running="false"/);
+  assert.match(carousel, /aria-hidden="false"[^>]*aria-label="1 of 2"/);
+  assert.match(carousel, /aria-hidden="true"[^>]*aria-label="2 of 2"[^>]*inert=""/);
+  assert.match(carousel, /<h1 class="promo-title"><span class="sr-only">Build around the equipment you need\.<\/span>/);
+  assert.match(carousel, /<span aria-hidden="true" class="promo-title-visual">Build around the equipment you need\.<\/span>/);
+  assert.match(carousel, /fetchPriority="high"/i);
+  assert.match(carousel, /srcSet="\/promotions\/equipment-mobile.svg"/i);
+  assert.match(carousel, /aria-label="Show promotion 1:[^"]+" aria-pressed="true"/);
+  assert.match(carousel, /aria-label="Show promotion 2:[^"]+" aria-pressed="false"/);
+  assert.doesNotMatch(carousel, /Previous promotion|Next promotion|Promotion 1 of|promo-rotation|Pause automatic|Resume automatic/);
   assert.match(html, /href="\/#categories"/);
   assert.match(html, /id="categories"/);
   assert.match(html, /id="lahore-survey"/);
@@ -678,12 +688,12 @@ test("homepage renders its first promotion and static sections without catalog r
   assert.match(html, /Dahua/);
   assert.match(html, /Cash on delivery/);
   assert.doesNotMatch(html, /id="published-products"/);
-  assert.match(html, /Previous promotion/);
-  assert.match(html, /Next promotion/);
   for (const path of ["equipment-desktop.svg", "equipment-mobile.svg", "survey-desktop.svg", "survey-mobile.svg"]) {
     const response = await fetch(`${baseUrl}/promotions/${path}`);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-type") ?? "", /image\/svg\+xml/, path);
+    if (path.endsWith("desktop.svg")) assert.match(await response.text(), /viewBox="0 0 1920 480"/);
+    else assert.match(await response.text(), /viewBox="960 0 960 480"/);
   }
 });
 
@@ -901,7 +911,7 @@ test("unknown nested URLs return a real 404 document with recovery", async () =>
   assert.match(response.headers.get("x-robots-tag") ?? "", /noindex/);
 });
 
-test("the production homepage serves brand-strip and reassurance CSS and hydration JavaScript", async () => {
+test("the production homepage serves promotion, brand-strip and reassurance CSS and hydration JavaScript", async () => {
   const html = await (await fetch(baseUrl)).text();
   const cssPaths = [...new Set([...html.matchAll(/href="([^"\s]+\.css)"/g)].map((match) => match[1]))];
   const js = html.match(/\/assets\/[^"\s]+?\.js/)?.[0];
@@ -919,6 +929,12 @@ test("the production homepage serves brand-strip and reassurance CSS and hydrati
   assert.match(styles, /--brand-strip-tile-width:/);
   assert.match(styles, /\.reassurance-strip\s*\{[^}]*display:\s*grid/);
   assert.match(styles, /--reassurance-surface:/);
+  assert.match(styles, /\.promo-track\s*\{[^}]*display:\s*flex/);
+  assert.match(styles, /\.promo-slide\s*\{[^}]*flex:\s*0 0 100%/);
+  assert.match(styles, /touch-action:\s*pan-y/);
+  assert.match(styles, /--promo-surface:/);
+  assert.match(styles, /--promo-banner-height:/);
+  assert.match(styles, /prefers-reduced-motion:\s*reduce/);
   const javascript = await fetch(new URL(js, baseUrl));
   assert.equal(javascript.status, 200);
   assert.match(javascript.headers.get("content-type") ?? "", /(?:java|ecma)script/);
