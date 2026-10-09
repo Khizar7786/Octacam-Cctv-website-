@@ -43,9 +43,12 @@ test("public logo preserves the approved RGBA master", () => {
 });
 
 test("text and focus color pairs meet their WCAG contrast targets", () => {
+  assert.notEqual(colorToken("reassurance-surface"), colorToken("footer"), "the strip must remain distinct from the adjacent footer");
   const pairs = [
     ["brand", "brand-foreground", 4.5],
     ["foreground", "background", 4.5],
+    ["foreground", "card", 4.5],
+    ["foreground", "accent", 4.5],
     ["muted-foreground", "card", 4.5],
     ["secondary-foreground", "card", 4.5],
     ["accent-foreground", "accent", 4.5],
@@ -64,6 +67,12 @@ test("text and focus color pairs meet their WCAG contrast targets", () => {
     ["footer-foreground", "footer", 4.5],
     ["footer-muted", "footer", 4.5],
     ["navigation-focus", "footer", 3],
+    ["reassurance-foreground", "reassurance-surface", 4.5],
+    ["reassurance-muted", "reassurance-surface", 4.5],
+    ["reassurance-accent", "reassurance-surface", 3],
+    ["reassurance-warranty-icon", "reassurance-surface", 3],
+    ["reassurance-delivery-icon", "reassurance-surface", 3],
+    ["reassurance-support-icon", "reassurance-surface", 3],
     ["brand", "brand-soft", 3],
     ["icon-account", "icon-account-surface", 3],
     ["icon-account", "card", 3],

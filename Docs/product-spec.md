@@ -79,6 +79,7 @@ The booked appointment is **a site survey, not a guaranteed installation appoint
 ### 5.2 Discovery
 
 - Customers can browse by category and brand, search product names and model numbers, and filter by category, brand, price range, availability, and relevant technical attributes.
+- The owner's 8 October 2026 homepage refinement presents all active registered brands in a clickable, slowly scrolling logo strip with an All brands destination. Use uploaded logos or a readable brand-name fallback; the strip can be paused and stays usable without motion or JavaScript. Promotional banners retain their separate manual behavior.
 - Technical filters should match the product type; for example, camera resolution or indoor/outdoor use should not be forced onto storage products.
 - Customers can sort results by relevance or a simple price order.
 - Search and filter results must make unavailable products identifiable rather than silently hiding them.

@@ -41,6 +41,21 @@
   --footer-foreground: var(--navigation-foreground);
   --footer-muted: #c4d0df;
 
+  /* Charcoal distinguishes the reassurance strip from the adjacent navy footer. */
+  --reassurance-surface: #242424;
+  --reassurance-foreground: #ffffff;
+  --reassurance-muted: #d1d5db;
+  /* Lighter decorative outlines remain readable directly on charcoal. */
+  --reassurance-accent: #91bbff;
+  --reassurance-warranty-icon: #b59cff;
+  --reassurance-delivery-icon: #f1bf6c;
+  --reassurance-support-icon: #ff9cb5;
+  --reassurance-divider: #464646;
+  --reassurance-heading-size: clamp(1.25rem, 2vw, 1.5rem);
+  --reassurance-title-size: 1rem;
+  --reassurance-detail-size: 0.875rem;
+  --reassurance-icon-size: 3rem;
+
   /* Decorative icon accents stay separate from stock, warning, and error states. */
   --icon-account: #6b46c1;
   --icon-account-surface: #f1eaff;
@@ -86,6 +101,14 @@
   --header-search-max: 42rem;
   --header-row-height: 4rem;
   --header-reveal-shadow: 0 4px 16px rgb(14 42 80 / 12%);
+  --brand-strip-heading-size: clamp(1.375rem, 2vw, 1.875rem);
+  --brand-strip-tile-width: clamp(9rem, 12vw, 14rem);
+  --brand-strip-tile-height: 5rem;
+  --brand-strip-logo-width: 8rem;
+  --brand-strip-logo-height: 3rem;
+  --brand-strip-gap: var(--space-4);
+  /* Native horizontal scrolling speed in pixels per second. */
+  --brand-strip-speed: 24;
   --catalog-sidebar-width: 17rem;
   --product-card-max: 16rem;
   --sale-badge: #367b43;

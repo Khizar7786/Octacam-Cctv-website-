@@ -17,6 +17,7 @@ import {
   FaWhatsapp,
   FaXmark,
 } from "react-icons/fa6";
+import { LuBanknote, LuHeadset, LuShield, LuTruck } from "react-icons/lu";
 import { cn } from "~/lib/utils";
 
 const icons = {
@@ -30,6 +31,10 @@ const icons = {
   minus: { glyph: FaMinus, color: "text-primary", surface: "bg-accent" },
   plus: { glyph: FaPlus, color: "text-primary", surface: "bg-accent" },
   refresh: { glyph: FaRotate, color: "text-primary", surface: "bg-accent" },
+  cash: { glyph: LuBanknote, color: "text-primary", surface: "bg-accent" },
+  warranty: { glyph: LuShield, color: "text-primary", surface: "bg-accent" },
+  delivery: { glyph: LuTruck, color: "text-primary", surface: "bg-accent" },
+  assistance: { glyph: LuHeadset, color: "text-primary", surface: "bg-accent" },
   filters: { glyph: FaSliders, color: "text-primary", surface: "bg-accent" },
   account: { glyph: FaUser, color: "text-icon-account", surface: "bg-icon-account-surface" },
   survey: { glyph: FaCalendarCheck, color: "text-primary", surface: "bg-accent" },

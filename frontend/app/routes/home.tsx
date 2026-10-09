@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 import { Link, useLoaderData, useRouteLoaderData } from "react-router";
 import { ProductCard } from "~/components/catalog/product-card";
 import { PromoCarousel } from "~/components/home/promo-carousel";
-import { brandLinks, categoryLinks } from "~/config/storefront";
+import { BrandStrip } from "~/components/home/brand-strip";
+import { ReassuranceStrip } from "~/components/home/reassurance-strip";
 import { getPublicProducts, type PublicProduct } from "~/features/catalog/api";
 import { serverApiClient } from "~/lib/api/server-client.server";
+import type { loader as rootLoader } from "../root";
 import type { Route } from "./+types/home";
 
 export function meta() {
@@ -36,26 +38,14 @@ function SectionHeading({ eyebrow, title, id, children }: { eyebrow: string; tit
 
 export default function Home() {
   const { products, catalogUnavailable } = useLoaderData<typeof loader>();
-  const active = useRouteLoaderData("root") as { brandLinks: { label: string; to: string }[]; categoryLinks: typeof categoryLinks[number][]; brandsUnavailable: boolean; categoriesUnavailable: boolean } | undefined;
-  const visibleBrandLinks = active?.brandLinks ?? brandLinks.filter((link) => link.to === "/brands");
+  const active = useRouteLoaderData<typeof rootLoader>("root");
   const visibleCategoryLinks = active?.categoryLinks ?? [];
 
   return (
     <div className="space-y-8 sm:space-y-10">
       <PromoCarousel />
 
-      <section aria-labelledby="brands-heading" id="brands">
-        <SectionHeading eyebrow="Browse by brand" id="brands-heading" title="Start with a brand" />
-        <div className="grid gap-4 sm:grid-cols-3">
-          {visibleBrandLinks.map(({ label, to }) => (
-            <Link className="flex min-h-24 items-center justify-between gap-4 rounded-lg border border-border bg-card p-5 no-underline shadow-sm hover:border-primary" key={to} to={to}>
-              <span className="text-xl font-bold text-foreground">{label}</span>
-              <span className="text-xs font-semibold text-primary">Browse brands</span>
-            </Link>
-          ))}
-        </div>
-        {active?.brandsUnavailable ? <p className="mt-4 text-sm text-muted-foreground" role="status">Brand information is unavailable right now.</p> : null}
-      </section>
+      <BrandStrip brands={active?.brandEntries ?? []} unavailable={active?.brandsUnavailable ?? false} />
 
       <section aria-labelledby="categories-heading" id="categories">
         <SectionHeading eyebrow="Shop by category" id="categories-heading" title="Find the right type of equipment" />
@@ -95,22 +85,7 @@ export default function Home() {
         </Link>
       </section>
 
-      <section aria-labelledby="reassurance-heading">
-        <SectionHeading eyebrow="Before you order" id="reassurance-heading" title="Clear terms, confirmed at checkout" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            ["Cash on delivery", "Equipment checkout uses COD only. The server calculates the final itemized amount before you place an order."],
-            ["Product warranty", "Warranty terms may differ by product. Check the applicable product information and published policy before ordering."],
-            ["Equipment delivery", "Delivery fees, coverage, and estimates will be shown after the business details are approved."],
-            ["Support", "Verified contact details and policy pages are being prepared."],
-          ].map(([title, detail]) => (
-            <div className="rounded-lg border border-border bg-card p-5" key={title}>
-              <h3 className="font-bold">{title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{detail}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <ReassuranceStrip />
     </div>
   );
 }

@@ -6,6 +6,43 @@ import { ApiError, createApiClient } from "../app/lib/api/client.ts";
 
 const frontendOrigin = process.env.OCTACAM_FRONTEND_ORIGIN ?? "http://127.0.0.1:5173";
 
+test("the running development homepage delivers its brand-strip and reassurance styles", async () => {
+  const response = await fetch(frontendOrigin, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /class="brand-strip"/);
+
+  // A running Vite server previously retained the old @import graph while the
+  // component updated. Check delivered resources, rather than only source CSS.
+  const moduleResponse = await fetch(`${frontendOrigin}/app/components/home/brand-strip.tsx`, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(moduleResponse.status, 200);
+  const stylesheet = (await moduleResponse.text()).match(/["'](\/app\/styles\/home\.css(?:\?[^"']*)?)["']/)?.[1];
+  assert.ok(stylesheet, "the carousel module must load its stylesheet directly");
+  const stylesheetUrl = new URL(stylesheet, frontendOrigin);
+  stylesheetUrl.searchParams.set("direct", "");
+  const cssResponse = await fetch(stylesheetUrl, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(cssResponse.status, 200);
+  const css = await cssResponse.text();
+  assert.match(css, /\.brand-strip-track\s*\{[^}]*display:\s*flex/);
+  assert.match(css, /\.brand-strip-group\s*\{[^}]*display:\s*flex/);
+  assert.match(css, /\.brand-strip-link img\s*\{[^}]*object-fit:\s*contain/);
+
+  const sharedCss = await fetch(`${frontendOrigin}/app/styles/app.css?direct`, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(sharedCss.status, 200);
+  assert.match(await sharedCss.text(), /--brand-strip-tile-width:/);
+
+  const stripModule = await fetch(`${frontendOrigin}/app/components/home/reassurance-strip.tsx`, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(stripModule.status, 200);
+  const stripStylesheet = (await stripModule.text()).match(/["'](\/app\/styles\/reassurance\.css(?:\?[^"']*)?)["']/)?.[1];
+  assert.ok(stripStylesheet, "the reassurance strip must load its scoped stylesheet directly");
+  const stripStylesheetUrl = new URL(stripStylesheet, frontendOrigin);
+  stripStylesheetUrl.searchParams.set("direct", "");
+  const stripCssResponse = await fetch(stripStylesheetUrl, { signal: AbortSignal.timeout(5_000) });
+  assert.equal(stripCssResponse.status, 200);
+  const stripCss = await stripCssResponse.text();
+  assert.match(stripCss, /\.reassurance-strip\s*\{[^}]*display:\s*grid/);
+  assert.match(stripCss, /\.reassurance-strip\s*\{[^}]*background:\s*var\(--reassurance-surface\)/);
+});
+
 test("the development proxy serves the real public catalog to a browser client", async () => {
   const nativeFetch = globalThis.fetch;
   globalThis.fetch = async (input, init) => {

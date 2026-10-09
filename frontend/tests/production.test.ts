@@ -21,6 +21,7 @@ let catalogStatus = 200;
 let catalogReply: unknown = { count: 0, next: null, previous: null, results: [] };
 let catalogResponder: ((path: string) => unknown) | null = null;
 let brandDetailStatus = 200;
+let brandListStatus = 200;
 const detailReplies = new Map<string, { status: number; body: unknown }>();
 const taxonomy = (id: number, name: string, slug: string, is_active = true, logo_url: string | null = null) => ({
   id, name, slug, description: "", is_active, sort_order: id,
@@ -55,6 +56,11 @@ before(async () => {
     const url = new URL(request.url ?? "/", "http://localhost");
     const taxonomyMatch = url.pathname.match(/^\/api\/v1\/catalog\/(brands|categories)\/(?:([^/]+)\/)?$/);
     if (taxonomyMatch) {
+      if (taxonomyMatch[1] === "brands" && !taxonomyMatch[2] && brandListStatus !== 200) {
+        response.writeHead(brandListStatus, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ error: { code: "UNAVAILABLE", message: "Unavailable", fields: {} } }));
+        return;
+      }
       if (taxonomyMatch[1] === "brands" && taxonomyMatch[2] && brandDetailStatus !== 200) {
         response.writeHead(brandDetailStatus, { "Content-Type": "application/json" });
         response.end(JSON.stringify({ error: { code: "UNAVAILABLE", message: "Unavailable", fields: {} } }));
@@ -681,6 +687,88 @@ test("homepage renders its first promotion and static sections without catalog r
   }
 });
 
+test("homepage reassurance details remain accessible in the initial HTML without JavaScript", async () => {
+  const html = (await (await fetch(baseUrl)).text()).split("<script")[0];
+  const section = html.match(/<section\b[^>]*class="reassurance-section"[^>]*>(.*?)<\/section>/s)?.[1];
+  assert.ok(section);
+  assert.match(section, /Before you order/);
+  assert.match(section, /<ul class="reassurance-strip">/);
+  const items = [...section.matchAll(/<li class="reassurance-item">(.*?)<\/li>/gs)];
+  assert.equal(items.length, 4);
+  for (const [, item] of items) {
+    assert.match(item, /<div class="reassurance-copy"><h3>[^<]+<\/h3><p>[^<]+<\/p>/);
+  }
+  assert.match(section, /Cash on delivery only/);
+  assert.match(section, /<p>Warranty terms vary by product\.<\/p>/);
+  assert.match(section, /awaiting business approval/);
+  assert.match(section, /Verified contact details and support policies are being prepared/);
+  assert.doesNotMatch(section, /<button\b|reassurance-rotor|reassurance-toggle|data-enhanced|72H|14 DAYS|Free shipping|Quality guarantee/i);
+});
+
+test("homepage brand strip contains every active brand and its uploaded logo before hydration", async () => {
+  const originalBrands = brands;
+  brands = [
+    taxonomy(1, "Hikvision", "hikvision", true, "/media/brands/hikvision.webp"),
+    taxonomy(2, "Dahua", "dahua"),
+    ...Array.from({ length: 19 }, (_, index) => taxonomy(100 + index, `Brand ${index + 1}`, `brand-${index + 1}`, true, index === 18 ? "/media/brands/last.webp" : null)),
+    taxonomy(500, "Inactive Brand", "inactive-brand", false, "/media/brands/inactive.webp"),
+  ];
+  try {
+    const html = (await (await fetch(baseUrl)).text()).split("<script")[0];
+    const section = html.match(/<section\b[^>]*class="brand-strip"[^>]*>(.*?)<\/section>/s)?.[1];
+    assert.ok(section);
+    assert.match(section, /Shop by Brands/);
+    assert.doesNotMatch(section, /Browse by brand|inactive-brand|inactive.webp/);
+    assert.match(section, /href="\/brands"[^>]*>All brands/);
+    const original = section.match(/<ul class="brand-strip-group">(.*?)<\/ul>/s)?.[1];
+    assert.ok(original);
+    assert.equal((original.match(/<a\b/g) ?? []).length, 21, "all API pages supply usable original links");
+    assert.match(original, /aria-label="Browse Hikvision products"/);
+    assert.match(original, /src="\/media\/brands\/hikvision.webp"/);
+    assert.match(original, /href="\/brands\/dahua"[^>]*><span>Dahua<\/span>/);
+    assert.match(original, /href="\/brands\/brand-19"/);
+    assert.match(original, /src="\/media\/brands\/last.webp"/);
+    assert.ok(original.indexOf('/brands/hikvision') < original.indexOf('/brands/dahua'));
+    assert.ok(original.indexOf('/brands/dahua') < original.indexOf('/brands/brand-19'));
+    assert.doesNotMatch(original, /tabindex="-1"|aria-hidden="true"/);
+    const copy = section.match(/<ul aria-hidden="true" class="brand-strip-group brand-strip-copy">(.*?)<\/ul>/s)?.[1];
+    assert.ok(copy);
+    assert.equal((copy.match(/tabindex="-1"/g) ?? []).length, 21, "visual loop copies do not add keyboard stops");
+    assert.match(copy, /href="\/brands\/brand-19"/);
+    assert.doesNotMatch(section, /<button\b|brand-strip-control|choose Play/);
+    assert.match(section, /pauses while you hover the section or focus the logos and resumes when you leave/);
+    assert.match(html, /class="brand-strip" data-animated="false"/, "automatic motion starts only after hydration");
+  } finally {
+    brands = originalBrands;
+  }
+});
+
+test("empty and unavailable brand lists retain an honest status and All brands destination", async () => {
+  const originalBrands = brands;
+  brands = [];
+  try {
+    let html = (await (await fetch(baseUrl)).text()).split("<script")[0];
+    let section = html.match(/<section\b[^>]*class="brand-strip"[^>]*>(.*?)<\/section>/s)?.[1];
+    assert.ok(section);
+    assert.match(section, /href="\/brands"[^>]*>All brands/);
+    assert.match(section, /role="status">No active brands are available yet/);
+    assert.doesNotMatch(section, /brand-strip-link|<img/);
+    brandListStatus = 503;
+    const response = await fetch(baseUrl);
+    assert.equal(response.status, 200);
+    html = (await response.text()).split("<script")[0];
+    section = html.match(/<section\b[^>]*class="brand-strip"[^>]*>(.*?)<\/section>/s)?.[1];
+    assert.ok(section);
+    assert.match(section, /href="\/brands"[^>]*>All brands/);
+    assert.match(section, /role="status">Brand information is unavailable right now/);
+    assert.doesNotMatch(section, /brand-strip-link|<img/);
+    assert.match(html, /id="categories"/);
+  } finally {
+    brands = originalBrands;
+    brandListStatus = 200;
+  }
+});
+
 test("homepage shows only genuine public catalog records with server-provided money", async () => {
   catalogReply = {
     count: 1, next: null, previous: null,
@@ -813,18 +901,28 @@ test("unknown nested URLs return a real 404 document with recovery", async () =>
   assert.match(response.headers.get("x-robots-tag") ?? "", /noindex/);
 });
 
-test("the production server also serves the built CSS and hydration JavaScript", async () => {
+test("the production homepage serves brand-strip and reassurance CSS and hydration JavaScript", async () => {
   const html = await (await fetch(baseUrl)).text();
-  const css = html.match(/href="([^"\s]+\.css)"/)?.[1];
+  const cssPaths = [...new Set([...html.matchAll(/href="([^"\s]+\.css)"/g)].map((match) => match[1]))];
   const js = html.match(/\/assets\/[^"\s]+?\.js/)?.[0];
-  assert.ok(css, "SSR document must reference built CSS");
+  assert.ok(cssPaths.length > 0, "SSR document must reference built CSS");
   assert.ok(js, "SSR document must reference hydration JavaScript");
-  for (const [path, contentType] of [[css, /text\/css/], [js, /(?:java|ecma)script/]] as const) {
+  let styles = "";
+  for (const path of cssPaths) {
     const response = await fetch(new URL(path, baseUrl));
     assert.equal(response.status, 200);
-    assert.match(response.headers.get("content-type") ?? "", contentType);
-    assert.ok((await response.text()).length > 0);
+    assert.match(response.headers.get("content-type") ?? "", /text\/css/);
+    styles += await response.text();
   }
+  assert.match(styles, /\.brand-strip-track\s*\{[^}]*display:\s*flex/);
+  assert.match(styles, /\.brand-strip-group\s*\{[^}]*display:\s*flex/);
+  assert.match(styles, /--brand-strip-tile-width:/);
+  assert.match(styles, /\.reassurance-strip\s*\{[^}]*display:\s*grid/);
+  assert.match(styles, /--reassurance-surface:/);
+  const javascript = await fetch(new URL(js, baseUrl));
+  assert.equal(javascript.status, 200);
+  assert.match(javascript.headers.get("content-type") ?? "", /(?:java|ecma)script/);
+  assert.ok((await javascript.text()).length > 0);
 });
 
 test("an unexpected loader failure renders the production boundary without private details", async () => {

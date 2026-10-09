@@ -54,6 +54,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     brandsUnavailable: brands === null,
     categoriesUnavailable: categories === null,
+    brandEntries: (brands ?? []).map(({ id, name, slug, logo_url }) => ({ id, name, slug, logoUrl: logo_url })),
     brandLinks: [{ label: "All brands", to: "/brands" }, ...(brands ?? []).map((brand) => ({ label: brand.name, to: `/brands/${encodeURIComponent(brand.slug)}` }))],
     categoryLinks: categoryLinks.filter((link) => activeCategorySlugs.has(link.to.split("/").at(-1) ?? "")),
   };

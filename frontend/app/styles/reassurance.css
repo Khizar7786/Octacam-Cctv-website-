@@ -1,0 +1,114 @@
+.reassurance-section {
+  /* Extend only this surface through the page gutter; avoid viewport-width overflow. */
+  margin-inline: calc(0px - var(--page-gutter));
+}
+
+.reassurance-heading {
+  margin-bottom: var(--space-3);
+  padding-inline: var(--page-gutter);
+  color: var(--foreground);
+  font-size: var(--reassurance-heading-size);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  text-align: center;
+}
+
+.reassurance-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0 var(--page-gutter);
+  border-radius: 0;
+  background: var(--reassurance-surface);
+  color: var(--reassurance-foreground);
+  list-style: none;
+}
+
+.reassurance-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.reassurance-item + .reassurance-item {
+  border-top: 1px solid var(--reassurance-divider);
+}
+
+.reassurance-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: var(--reassurance-icon-size);
+  height: var(--reassurance-icon-size);
+  align-items: center;
+  justify-content: center;
+  color: var(--reassurance-accent);
+}
+
+.reassurance-icon[data-kind="warranty"] {
+  color: var(--reassurance-warranty-icon);
+}
+
+.reassurance-icon[data-kind="delivery"] {
+  color: var(--reassurance-delivery-icon);
+}
+
+.reassurance-icon[data-kind="assistance"] {
+  color: var(--reassurance-support-icon);
+}
+
+.reassurance-icon svg {
+  width: var(--reassurance-icon-size);
+  height: var(--reassurance-icon-size);
+}
+
+.reassurance-copy {
+  min-width: 0;
+}
+
+.reassurance-copy h3 {
+  font-size: var(--reassurance-title-size);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.reassurance-copy p {
+  margin-top: var(--space-1);
+  color: var(--reassurance-muted);
+  font-size: var(--reassurance-detail-size);
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  .reassurance-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reassurance-item + .reassurance-item {
+    border-top: 0;
+  }
+
+  .reassurance-item:nth-child(even) {
+    border-left: 1px solid var(--reassurance-divider);
+  }
+
+  .reassurance-item:nth-child(n + 3) {
+    border-top: 1px solid var(--reassurance-divider);
+  }
+}
+
+@media (min-width: 1280px) {
+  .reassurance-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .reassurance-item + .reassurance-item {
+    border-left: 1px solid var(--reassurance-divider);
+  }
+
+  .reassurance-item:nth-child(n + 3) {
+    border-top: 0;
+  }
+}
