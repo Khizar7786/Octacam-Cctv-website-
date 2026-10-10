@@ -158,7 +158,7 @@ after(async () => {
 });
 
 test("production serves SSR documents on direct and refreshed nested requests", async () => {
-  for (const path of ["/", "/foundation", "/foundation", "/visual-foundation", "/shop", "/shop", "/search"]) {
+  for (const path of ["/", "/foundation", "/foundation", "/visual-foundation", "/shop", "/shop", "/search", "/cart", "/cart"]) {
     const response = await fetch(`${baseUrl}${path}`);
     const html = await response.text();
     assert.equal(response.status, 200);
@@ -175,6 +175,11 @@ test("production serves SSR documents on direct and refreshed nested requests", 
       assert.match(html, /Built for clear decisions/);
       assert.match(html, /src="\/brand\/octacam-logo\.png"/);
       assert.match(html, /Buttons and fields/);
+    } else if (path === "/cart") {
+      assert.match(html, /Your cart/);
+      assert.match(html, /Loading saved cart/);
+      assert.match(html, /Stock is not reserved/);
+      assert.doesNotMatch(html, /Saved quantity:|Place COD order/);
     } else if (path === "/shop" || path === "/search") {
       assert.match(html, path === "/shop" ? /Shop CCTV equipment/ : /Search CCTV equipment/);
       assert.match(html, /No published products yet/);
@@ -629,8 +634,9 @@ test("product detail renders the published backend record in initial HTML", asyn
     assert.match(html, /Questions about this product\? Contact page \(coming soon\)/);
     assert.match(html, /aria-label="Decrease quantity"/);
     assert.match(html, /aria-label="Increase quantity"/);
-    assert.match(html, /<button[^>]*disabled[^>]*>Add to cart \(coming soon\)<\/button>/);
-    assert.doesNotMatch(html.split("<article")[1]?.split("</article>")[0] ?? "", /href="\/cart"|Free shipping|Guaranteed compatibility/);
+    assert.match(html, /<button[^>]*disabled[^>]*>Add to cart<\/button>/);
+    assert.match(html, /Adding this item does not reserve stock/);
+    assert.doesNotMatch(html.split("<article")[1]?.split("</article>")[0] ?? "", /Free shipping|Guaranteed compatibility/);
 
     const soldOut = (await (await fetch(`${baseUrl}/products/sold-out`)).text()).split("<script")[0];
     assert.match(soldOut, /Out of stock/);
@@ -677,7 +683,8 @@ test("homepage renders its first promotion and static sections without catalog r
   assert.match(carousel, /<h1 class="promo-title"><span class="sr-only">Build around the equipment you need\.<\/span>/);
   assert.match(carousel, /<span aria-hidden="true" class="promo-title-visual">Build around the equipment you need\.<\/span>/);
   assert.match(carousel, /fetchPriority="high"/i);
-  assert.match(carousel, /srcSet="\/promotions\/equipment-mobile.svg"/i);
+  assert.match(carousel, /src="\/promotions\/equipment-desktop.png"/);
+  assert.match(carousel, /srcSet="\/promotions\/equipment-mobile.png"/i);
   assert.match(carousel, /aria-label="Show promotion 1:[^"]+" aria-pressed="true"/);
   assert.match(carousel, /aria-label="Show promotion 2:[^"]+" aria-pressed="false"/);
   assert.doesNotMatch(carousel, /Previous promotion|Next promotion|Promotion 1 of|promo-rotation|Pause automatic|Resume automatic/);
@@ -688,12 +695,19 @@ test("homepage renders its first promotion and static sections without catalog r
   assert.match(html, /Dahua/);
   assert.match(html, /Cash on delivery/);
   assert.doesNotMatch(html, /id="published-products"/);
-  for (const path of ["equipment-desktop.svg", "equipment-mobile.svg", "survey-desktop.svg", "survey-mobile.svg"]) {
+  for (const path of ["equipment-desktop.png", "equipment-mobile.png", "survey-desktop.png", "survey-mobile.png"]) {
     const response = await fetch(`${baseUrl}/promotions/${path}`);
     assert.equal(response.status, 200, path);
-    assert.match(response.headers.get("content-type") ?? "", /image\/svg\+xml/, path);
-    if (path.endsWith("desktop.svg")) assert.match(await response.text(), /viewBox="0 0 1920 480"/);
-    else assert.match(await response.text(), /viewBox="960 0 960 480"/);
+    if (path.endsWith(".png")) {
+      assert.match(response.headers.get("content-type") ?? "", /image\/png/, path);
+      const image = Buffer.from(await response.arrayBuffer());
+      assert.deepEqual([...image.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+      assert.ok(image.readUInt32BE(16) > 0 && image.readUInt32BE(20) > 0, "PNG has valid dimensions");
+    } else {
+      assert.match(response.headers.get("content-type") ?? "", /image\/svg\+xml/, path);
+      if (path.endsWith("desktop.svg")) assert.match(await response.text(), /viewBox="0 0 1920 480"/);
+      else assert.match(await response.text(), /viewBox="960 0 960 480"/);
+    }
   }
 });
 

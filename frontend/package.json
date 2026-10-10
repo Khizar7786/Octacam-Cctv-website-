@@ -11,7 +11,7 @@
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
-    "test": "node --experimental-strip-types --test tests/route-errors.test.ts tests/api-client.test.ts tests/catalog-api.test.ts tests/discovery.test.ts tests/visual-foundation.test.ts tests/taxonomy.test.ts tests/header-scroll.test.ts",
+    "test": "node --experimental-strip-types --test tests/route-errors.test.ts tests/api-client.test.ts tests/catalog-api.test.ts tests/discovery.test.ts tests/visual-foundation.test.ts tests/taxonomy.test.ts tests/header-scroll.test.ts tests/cart.test.ts",
     "test:api:live": "node --experimental-strip-types --test tests/api-live.test.ts",
     "test:production": "node --experimental-strip-types --test tests/production.test.ts"
   },

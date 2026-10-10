@@ -13,6 +13,7 @@ import type { Route } from "./+types/root";
 import { Container } from "./components/layout/container";
 import { SiteFooter } from "./components/layout/site-footer";
 import { SiteHeader } from "./components/layout/site-header";
+import { CartProvider } from "./features/cart/cart-context";
 import { getRouteErrorContent } from "./lib/route-errors";
 import { categoryLinks } from "./config/storefront";
 import { getAllPublicBrands, getPublicTaxonomies, getPublicTaxonomy } from "./features/catalog/taxonomy";
@@ -71,12 +72,14 @@ export function Layout({ children }: { children: ReactNode }) {
         <Links />
       </head>
       <body>
-        <a className="skip-link" href="#main-content">Skip to content</a>
-        <SiteHeader />
-        <Container className="min-h-[45vh] py-4 sm:py-6">
-          <main id="main-content" tabIndex={-1}>{children}</main>
-        </Container>
-        <SiteFooter />
+        <CartProvider>
+          <a className="skip-link" href="#main-content">Skip to content</a>
+          <SiteHeader />
+          <Container className="min-h-[45vh] py-4 sm:py-6">
+            <main id="main-content" tabIndex={-1}>{children}</main>
+          </Container>
+          <SiteFooter />
+        </CartProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

@@ -41,8 +41,8 @@ function FilterFields({
   }
 
   return (
-    <div className="catalog-fields grid gap-3">
-      {notice ? <p className="rounded-md border border-info bg-info-surface p-3 text-sm" role="status">{notice}</p> : null}
+    <div className="catalog-fields grid gap-5">
+      {notice ? <p className="catalog-notice bg-info-surface text-info" role="status">{notice}</p> : null}
       {(["brand", "category"] as const).filter((field) => !(field in scope)).map((field) => (
         <div className="catalog-field min-w-0" key={field}>
           <label className="mb-1 block text-sm font-semibold" htmlFor={`${prefix}-${field}`}>{field === "brand" ? "Brand" : "Category"}</label>
@@ -75,7 +75,7 @@ function FilterFields({
         {errors.availability ? <p className="mt-1 text-sm text-error" id={`${prefix}-availability-error`}>{errors.availability}</p> : null}
       </div>
       {draft.category !== committedCategory ? (
-        <p className="rounded-sm bg-background p-3 text-xs leading-relaxed text-muted-foreground">Apply filters to load technical options for the selected category.</p>
+        <p className="catalog-filter-help">Apply filters to load technical options for the selected category.</p>
       ) : draft.category && filters?.specifications.length ? (
         <fieldset className="grid gap-4">
           <legend className="text-sm font-semibold">Technical specifications</legend>
@@ -84,7 +84,7 @@ function FilterFields({
           ))}
         </fieldset>
       ) : draft.category ? null : (
-        <p className="rounded-sm bg-background p-3 text-xs leading-relaxed text-muted-foreground">Choose a category to see relevant technical filters.</p>
+        <p className="catalog-filter-help">Choose a category to see relevant technical filters.</p>
       )}
     </div>
   );
@@ -287,38 +287,41 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
   ];
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      {heading ? <Breadcrumbs items={heading.breadcrumbs} /> : null}
-      <header className="max-w-3xl">
-        <p className="text-sm font-bold text-primary">{heading?.eyebrow ?? "OctaCam catalog"}</p>
-        <h1 className="mt-2 text-[length:var(--font-size-heading)] font-bold leading-tight">{heading?.title ?? (path === "/search" ? "Search CCTV equipment" : "Shop CCTV equipment")}</h1>
-        <p className="mt-3 text-muted-foreground">{heading?.description ?? "Search product names or exact and partial model/SKU numbers. Prices and availability come from current published records."}</p>
+    <div className="catalog-discovery">
+      <Breadcrumbs items={heading?.breadcrumbs ?? [{ label: "Home", to: "/" }, { label: path === "/search" ? "Search" : "Shop" }]} />
+      <header className="catalog-page-heading">
+        {heading ? <p className="text-sm font-semibold text-primary">{heading.eyebrow}</p> : null}
+        <h1 className="text-[length:var(--font-size-heading)] font-bold leading-tight">{heading?.title ?? (path === "/search" ? "Search CCTV equipment" : "Shop CCTV equipment")}</h1>
+        <p className="text-muted-foreground">{heading?.description ?? "Find cameras, recorders, storage, and accessories by name or model."}</p>
       </header>
-      {typeof location.state?.catalogScopeNotice === "string" ? <p className="rounded-md border border-info bg-info-surface p-3 text-sm" role="status">{location.state.catalogScopeNotice}</p> : null}
+      {typeof location.state?.catalogScopeNotice === "string" ? <p className="catalog-notice bg-info-surface text-info" role="status">{location.state.catalogScopeNotice}</p> : null}
 
-      <form aria-label="Catalog search" className="grid max-w-[var(--catalog-search-max)] gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end" onSubmit={apply} role="search">
-        <div className="min-w-0 flex-1">
-          <label className="mb-1 block text-sm font-semibold" htmlFor="catalog-search">Product name or model/SKU</label>
-          <Input aria-describedby={draftErrors.q ? "catalog-search-error" : undefined} aria-invalid={Boolean(draftErrors.q)} autoComplete="off" className="catalog-control" id="catalog-search" onChange={(event) => { setDraft((current) => ({ ...current, q: event.target.value })); setDraftErrors((current) => ({ ...current, q: undefined })); }} placeholder="Search cameras, recorders, or a model number" ref={searchRef} type="search" value={draft.q} />
-          {draftErrors.q ? <p className="mt-1 text-sm text-error" id="catalog-search-error">{draftErrors.q}</p> : null}
+      <form aria-label="Catalog search" className="catalog-search" onSubmit={apply} role="search">
+        <label className="sr-only" htmlFor="catalog-search">Product name or model/SKU</label>
+        <div className="catalog-search-row">
+          <div className="catalog-search-field">
+            <StoreIcon name="search" />
+            <Input aria-describedby={draftErrors.q ? "catalog-search-error" : undefined} aria-invalid={Boolean(draftErrors.q)} autoComplete="off" className="catalog-search-input" id="catalog-search" onChange={(event) => { setDraft((current) => ({ ...current, q: event.target.value })); setDraftErrors((current) => ({ ...current, q: undefined })); }} placeholder="Search products or model numbers" ref={searchRef} type="search" value={draft.q} />
+          </div>
+          <button aria-label="Search products" className={buttonStyles({ className: "catalog-search-submit" })} type="submit"><span className="sm:hidden"><StoreIcon inheritColor name="search" /></span><span className="hidden sm:inline">Search products</span></button>
         </div>
-        <button className={buttonStyles({ className: "sm:mb-0" })} type="submit"><StoreIcon inheritColor name="search" />Search products</button>
+        {draftErrors.q ? <p className="mt-2 text-sm text-error" id="catalog-search-error">{draftErrors.q}</p> : null}
       </form>
 
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-border bg-card p-3 lg:hidden">
-        <button aria-controls="mobile-catalog-filters" aria-expanded={mobileOpen} aria-haspopup="dialog" className={buttonStyles({ variant: "outline" })} onClick={() => { setDraft(data.query); setDraftErrors({}); setScopeNotice(""); setMobileOpen(true); }} ref={triggerRef} type="button"><StoreIcon name="filters" />Filters{chips.length ? ` (${chips.length})` : ""}</button>
+      <div className="catalog-mobile-toolbar flex flex-wrap items-center justify-between gap-3 lg:hidden">
+        <button aria-controls="mobile-catalog-filters" aria-expanded={mobileOpen} aria-haspopup="dialog" className={buttonStyles({ variant: "ghost", className: "catalog-filter-trigger" })} onClick={() => { setDraft(data.query); setDraftErrors({}); setScopeNotice(""); setMobileOpen(true); }} ref={triggerRef} type="button"><StoreIcon name="filters" />Filters{chips.length ? <span className="catalog-filter-count">{chips.length}</span> : null}</button>
         <SortControl id="mobile-catalog-sort" onChange={(sort) => navigate(discoveryHref(path, { ...data.query, sort, page: 1 }, scope))} sort={data.query.sort} />
       </div>
 
       {chips.length ? (
         <div aria-label="Active filters" className="flex flex-wrap items-center gap-2">
-          {chips.map((chip) => <button aria-label={`Remove ${chip.label} filter`} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-primary/30 bg-accent px-3 text-sm text-accent-foreground hover:border-primary" data-filter-chip key={chip.field} onClick={() => removeFilter(chip.field)} type="button">{chip.label}<span aria-hidden="true">×</span></button>)}
+          {chips.map((chip) => <button aria-label={`Remove ${chip.label} filter`} className="catalog-filter-chip" data-filter-chip key={chip.field} onClick={() => removeFilter(chip.field)} type="button">{chip.label}<StoreIcon inheritColor name="close" /></button>)}
           <Link className="inline-flex min-h-11 items-center px-2 text-sm" onClick={() => { focusAfterChip.current = true; }} to={discoveryHref(path, withoutFilters(data.query, scope), scope)}>Clear filters</Link>
         </div>
       ) : null}
 
       {data.state === "invalid" ? (
-        <section className="rounded-lg border border-warning bg-warning-surface p-6" role="alert">
+        <section className="catalog-message bg-warning-surface" role="alert">
           <h2 className="text-lg font-bold">This catalog selection is unavailable</h2>
           <p className="mt-2 text-sm">{data.errors.url ?? data.errors.page ?? "Review the highlighted search or filter values."}</p>
           {Object.entries(data.errors).filter(([key]) => key !== "url" && key !== "page").map(([key, message]) => <p className="mt-1 text-sm" key={key}>{key.replaceAll("_", " ")}: {message}</p>)}
@@ -326,28 +329,28 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
         </section>
       ) : null}
       {data.state === "error" ? (
-        <section className="rounded-lg border border-error bg-error-surface p-6" role="alert">
+        <section className="catalog-message bg-error-surface" role="alert">
           <h2 className="text-lg font-bold">Products could not be loaded</h2>
           <p className="mt-2 text-sm">Your search and filters remain in the address. Please try again.</p>
           <button className={buttonStyles({ variant: "outline", className: "mt-4" })} disabled={loading} onClick={() => revalidator.revalidate()} type="button">Try again</button>
         </section>
       ) : null}
 
-      <div className="lg:grid lg:grid-cols-[var(--catalog-sidebar-width)_minmax(0,1fr)] lg:gap-6">
+      <div className="catalog-layout">
         <aside aria-label="Catalog filters" className="catalog-filter-sidebar hidden min-w-0 self-start lg:block">
-          <div className="catalog-filter-heading flex items-center gap-3 px-4 py-3"><StoreIcon name="filters" /><h2 className="text-base font-bold">Filter products</h2></div>
+          <div className="catalog-filter-heading flex items-center gap-3"><StoreIcon name="filters" /><h2 className="text-base font-bold">Filter products</h2>{chips.length ? <span className="catalog-filter-count">{chips.length}</span> : null}</div>
           <form onSubmit={apply}>
-            <div className="p-4"><FilterFields committedCategory={data.query.category} draft={draft} errors={draftErrors} filters={filters} notice={scopeNotice} onChange={changeField} onSpecificationChange={changeSpecification} prefix="desktop" scope={scope} /></div>
+            <div className="catalog-filter-body"><FilterFields committedCategory={data.query.category} draft={draft} errors={draftErrors} filters={filters} notice={scopeNotice} onChange={changeField} onSpecificationChange={changeSpecification} prefix="desktop" scope={scope} /></div>
             <div className="catalog-filter-actions grid gap-2">
               <button className={buttonStyles()} type="submit">Apply filters</button>
-              <button className={buttonStyles({ variant: "outline" })} onClick={clearDraft} type="button">Clear filters</button>
+              <button className={buttonStyles({ variant: "ghost" })} onClick={clearDraft} type="button">Clear filters</button>
             </div>
           </form>
         </aside>
 
         {data.state === "ready" ? (
           <section aria-busy={loading} aria-labelledby="products-heading" className="min-w-0">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+            <div className="catalog-results-heading">
               <div>
                 <h2 className="text-lg font-bold" id="products-heading">{data.query.q ? `Results for “${data.query.q}”` : "Published products"}</h2>
                 <p className="mt-1 text-sm text-muted-foreground" role="status">{data.catalog.count} {data.catalog.count === 1 ? "product" : "products"} · Page {data.query.page}</p>
@@ -355,7 +358,8 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
               <div className="hidden lg:block"><SortControl id="desktop-catalog-sort" onChange={(sort) => navigate(discoveryHref(path, { ...data.query, sort, page: 1 }, scope))} sort={data.query.sort} /></div>
             </div>
             {data.catalog.count === 0 ? (
-              <div className="rounded-lg border border-border bg-card p-6 sm:p-10">
+              <div className="catalog-empty-state">
+                <div className="catalog-empty-icon"><StoreIcon name="search" /></div>
                 <h3 className="text-lg font-bold">{data.query.q || hasFilters ? "No matching products" : heading ? "No published products in this selection" : "No published products yet"}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{data.query.q || hasFilters ? "Try a broader model or product name, remove a filter, or browse the catalog." : "The catalog is empty right now. Return later to see equipment after it has been published."}</p>
                 <div className="mt-4 flex flex-wrap gap-4 text-sm">
@@ -368,11 +372,11 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
               <div className="product-grid product-grid--catalog">
                 {data.catalog.results.map((product) => <ProductCard key={product.id} product={product} />)}
               </div>
-            ) : <p className="rounded-lg border border-border bg-card p-6">There are no products on this page. <Link to={discoveryHref(path, { ...data.query, page: 1 }, scope)}>Return to page 1</Link>.</p>}
+            ) : <p className="catalog-message bg-card">There are no products on this page. <Link to={discoveryHref(path, { ...data.query, page: 1 }, scope)}>Return to page 1</Link>.</p>}
             {data.catalog.previous || data.catalog.next ? (
-              <nav aria-label="Catalog pages" className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
-                {data.catalog.previous ? <Link className={buttonStyles({ variant: "outline" })} rel="prev" to={discoveryPageHref(path, data.query, data.catalog.previous, scope)}>Previous page</Link> : <span />}
-                {data.catalog.next ? <Link className={buttonStyles({ variant: "outline" })} rel="next" to={discoveryPageHref(path, data.query, data.catalog.next, scope)}>Next page</Link> : null}
+              <nav aria-label="Catalog pages" className="mt-8 flex flex-wrap items-center justify-between gap-4">
+                {data.catalog.previous ? <Link className={buttonStyles({ variant: "ghost", className: "bg-card" })} rel="prev" to={discoveryPageHref(path, data.query, data.catalog.previous, scope)}><StoreIcon name="previous" />Previous page</Link> : <span />}
+                {data.catalog.next ? <Link className={buttonStyles({ variant: "ghost", className: "bg-card" })} rel="next" to={discoveryPageHref(path, data.query, data.catalog.next, scope)}>Next page<StoreIcon name="next" /></Link> : null}
               </nav>
             ) : null}
           </section>
@@ -382,14 +386,14 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
       {mobileOpen ? (
         <div className="catalog-filter-backdrop fixed inset-0 z-50 lg:hidden" onClick={(event) => { if (event.target === event.currentTarget) closeMobile(); }}>
           <div aria-labelledby="mobile-filters-heading" aria-modal="true" className="catalog-filter-drawer ml-auto flex flex-col bg-card" id="mobile-catalog-filters" onKeyDown={dialogKeyDown} ref={dialogRef} role="dialog">
-            <div className="catalog-filter-heading flex shrink-0 items-center justify-between gap-3 px-4 py-3">
+            <div className="catalog-filter-heading flex shrink-0 items-center justify-between gap-3">
               <div className="flex items-center gap-3"><StoreIcon name="filters" /><h2 className="text-lg font-bold" id="mobile-filters-heading">Filter products</h2></div>
               <button className={buttonStyles({ variant: "ghost" })} aria-label="Close filters" onClick={closeMobile} ref={closeRef} type="button"><StoreIcon name="close" /></button>
             </div>
             <form className="flex min-h-0 flex-1 flex-col" onSubmit={apply}>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"><FilterFields committedCategory={data.query.category} draft={draft} errors={draftErrors} filters={filters} notice={scopeNotice} onChange={changeField} onSpecificationChange={changeSpecification} prefix="mobile" scope={scope} /></div>
+              <div className="catalog-filter-body min-h-0 flex-1 overflow-y-auto overscroll-contain"><FilterFields committedCategory={data.query.category} draft={draft} errors={draftErrors} filters={filters} notice={scopeNotice} onChange={changeField} onSpecificationChange={changeSpecification} prefix="mobile" scope={scope} /></div>
               <div className="catalog-filter-actions grid shrink-0 grid-cols-2 gap-2">
-                <button className={buttonStyles({ variant: "outline", className: "min-w-0" })} onClick={clearDraft} type="button">Clear</button>
+                <button className={buttonStyles({ variant: "ghost", className: "min-w-0 bg-background" })} onClick={clearDraft} type="button">Clear</button>
                 <button className={buttonStyles({ className: "min-w-0" })} type="submit">Apply filters</button>
               </div>
             </form>
@@ -403,8 +407,8 @@ export function DiscoveryPage({ data, path, scope = {}, heading }: {
 
 function SortControl({ id, sort, onChange }: { id: string; sort: ProductSort; onChange: (sort: ProductSort) => void }) {
   return (
-    <div className="min-w-0">
-      <label className="mb-1 block text-xs font-semibold text-muted-foreground" htmlFor={id}>Sort by</label>
+    <div className="catalog-sort">
+      <label className="text-xs font-semibold text-muted-foreground" htmlFor={id}>Sort by</label>
       <CatalogSelect id={id} onChange={(event) => onChange(event.target.value as ProductSort)} value={sortLabels[sort] ? sort : "relevance"}>
         {(Object.entries(sortLabels) as [ProductSort, string][]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
       </CatalogSelect>

@@ -6,12 +6,13 @@ import { HeaderSearch } from "~/components/layout/header-search";
 import { useScrollHeader } from "~/components/layout/use-scroll-header";
 import { StoreIcon, type StoreIconName } from "~/components/ui/store-icon";
 import { brandLinks, categoryLinks, policyLinks } from "~/config/storefront";
+import { useCart } from "~/features/cart/cart-context";
+import { cartCount } from "~/features/cart/state";
 import { cn } from "~/lib/utils";
 
 type Panel = "menu" | "search" | null;
 
 const plannedIcons: Partial<Record<string, StoreIconName>> = {
-  "/cart": "cart",
   "/login": "account",
   "/surveys": "survey",
   "/contact": "contact",
@@ -45,7 +46,7 @@ function PlannedLink({
     >
       <span className="inline-flex items-center gap-2">
         {iconName ? <StoreIcon badge={dark || compact} name={iconName} /> : null}
-        <span className={!compact && to === "/cart" ? "sr-only sm:not-sr-only" : undefined}>{label}</span>
+        <span>{label}</span>
       </span>
       <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[0.625rem] font-semibold text-muted-foreground">Soon</span>
     </Link>
@@ -65,6 +66,26 @@ function CatalogLink({ label, to, compact = false, dark = false, onClick }: { la
       onClick={onClick}
       to={to}
     >{label}</Link>
+  );
+}
+
+function CartLink({ compact = false, dark = false, onClick }: { compact?: boolean; dark?: boolean; onClick?: () => void }) {
+  const { state } = useCart();
+  const count = state.ready ? cartCount(state.items) : null;
+  return (
+    <Link
+      aria-label={count === null ? "Cart" : `Cart, ${count} ${count === 1 ? "item" : "items"}`}
+      className={cn(
+        "inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold no-underline",
+        compact ? "w-full justify-between px-3" : "",
+        dark ? "text-navigation-foreground hover:bg-navigation-hover focus-visible:outline-navigation-focus" : "text-foreground hover:bg-accent",
+      )}
+      onClick={onClick}
+      to="/cart"
+    >
+      <span className="inline-flex items-center gap-2"><StoreIcon badge={dark || compact} name="cart" /><span className={compact ? "" : "sr-only sm:not-sr-only"}>Cart</span></span>
+      {count !== null ? <span aria-hidden="true" className={dark ? "rounded-full bg-card px-2 text-xs text-navigation" : "rounded-full bg-accent px-2 text-xs text-primary"}>{count}</span> : null}
+    </Link>
   );
 }
 
@@ -159,7 +180,7 @@ export function SiteHeader() {
               <StoreIcon name="search" /><span aria-hidden="true" className="hidden sm:inline">Search</span>
             </button>
             <span className="hidden xl:inline-flex"><PlannedLink label="Account" to="/login" /></span>
-            <PlannedLink label="Cart" to="/cart" />
+            <CartLink />
             <button
               aria-label="Menu"
               aria-controls="mobile-menu"
@@ -217,10 +238,10 @@ export function SiteHeader() {
               {[
                 { label: "Free Lahore site survey", to: "/surveys" },
                 { label: "Account", to: "/login" },
-                { label: "Cart", to: "/cart" },
                 { label: "Contact", to: "/contact" },
                 ...policyLinks,
               ].map((link) => <PlannedLink compact dark key={link.to} onClick={() => setOpenPanel(null)} {...link} />)}
+              <CartLink compact dark onClick={() => setOpenPanel(null)} />
             </div>
           </nav>
         </Container>

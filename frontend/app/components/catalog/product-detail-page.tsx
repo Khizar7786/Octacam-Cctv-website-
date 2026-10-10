@@ -9,6 +9,7 @@ import { StoreIcon, type StoreIconName } from "~/components/ui/store-icon";
 import { contact } from "~/config/storefront";
 import { hasValidSale, type PublicProduct, type PublicProductDetail } from "~/features/catalog/api";
 import { clampQuantity } from "~/features/catalog/product";
+import { useCart } from "~/features/cart/cart-context";
 
 function ProductBrand({ product, logoUrl }: { product: PublicProductDetail; logoUrl: string | null }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -24,8 +25,18 @@ function PurchasePanel({ product }: { product: PublicProductDetail }) {
   const [updateNotice, setUpdateNotice] = useState("");
   const previous = useRef({ stock: product.stock_quantity, price: product.selling_price });
   const revalidator = useRevalidator();
+  const { state: cart, dispatch } = useCart();
   const available = product.stock_quantity > 0;
   const amount = clampQuantity(quantity, product.stock_quantity);
+
+  function addToCart() {
+    if (!cart.ready || !available) return;
+    const current = cart.items.find((item) => item.product_id === product.id)?.quantity ?? 0;
+    dispatch({ type: "add", productId: product.id, quantity: amount, available: product.stock_quantity });
+    setUpdateNotice(current + amount > product.stock_quantity
+      ? `Cart quantity is limited to the ${product.stock_quantity} currently available. Review your cart.`
+      : `Added to cart. Review your cart before checkout.`);
+  }
 
   useEffect(() => {
     if (previous.current.stock === product.stock_quantity && previous.current.price === product.selling_price) return;
@@ -56,9 +67,9 @@ function PurchasePanel({ product }: { product: PublicProductDetail }) {
             </div>
           </div>
         ) : null}
-        <button className={buttonStyles({ className: "product-cart-action" })} disabled type="button">{available ? "Add to cart (coming soon)" : "Out of stock"}</button>
+        <button className={buttonStyles({ className: "product-cart-action" })} disabled={!available || !cart.ready} onClick={addToCart} type="button">{available ? "Add to cart" : "Out of stock"}</button>
       </div>
-      <p className="product-purchase-note">{available ? "The cart is being built. Selecting a quantity does not add or reserve this item." : "This product cannot be purchased while it is out of stock."}</p>
+      <p className="product-purchase-note">{available ? <>Adding this item does not reserve stock. <Link to="/cart">View cart</Link>.</> : "This product cannot be purchased while it is out of stock."}</p>
       <button className="product-refresh" disabled={revalidator.state === "loading"} onClick={() => revalidator.revalidate()} type="button">
         <StoreIcon name="refresh" />{revalidator.state === "loading" ? "Checking availability…" : "Refresh price and stock"}
       </button>

@@ -119,6 +119,10 @@
   /* Native horizontal scrolling speed in pixels per second. */
   --brand-strip-speed: 24;
   --catalog-sidebar-width: 17rem;
+  --catalog-control-surface: var(--background);
+  --catalog-layout-gap: clamp(1.5rem, 2.5vw, 2.5rem);
+  --catalog-sort-width: 12rem;
+  --catalog-card-min: 13rem;
   --product-card-max: 16rem;
   --sale-badge: #367b43;
   --sale-badge-foreground: #ffffff;
@@ -131,6 +135,13 @@
   --product-heading-size: clamp(1.5rem, 2vw, 2.125rem);
   --product-detail-gap: clamp(1.5rem, 3vw, 3rem);
   --product-divider: #e2e8f0;
+  /* Cart uses existing brand surfaces, with no outlines around product rows. */
+  --cart-summary-surface: var(--brand-soft);
+  --cart-summary-width: 22rem;
+  --cart-image-size: clamp(6rem, 9vw, 8.5rem);
+  --cart-layout-gap: clamp(1.5rem, 3vw, 3rem);
+  --cart-title-size: clamp(1rem, 1.2vw, 1.125rem);
+  --cart-total-size: clamp(1.75rem, 2vw, 2.125rem);
   --catalog-search-max: 52rem;
   --filter-drawer-width: 25rem;
   --overlay-backdrop: rgb(14 42 80 / 42%);
