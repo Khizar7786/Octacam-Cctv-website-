@@ -3,7 +3,8 @@
 This offline tool is the first stage of bulk catalog import. It reads only the
 Smartlinks product URLs you supply and saves JSON for manual review. It does not
 create products, change inventory, approve prices, or publish anything. The
-Django management command that imports reviewed JSON is a separate next slice.
+separate [Django import command](product-import.md) imports the reviewed JSON as
+unpublished zero-stock drafts.
 
 Use the existing backend virtual environment. Extraction uses Python's standard
 library; the optional image step also uses the installed Django/Pillow catalog
@@ -67,7 +68,8 @@ SKU, factual descriptions/specifications, brand/category mapping, approved PKR
 prices, and image usage. Missing values remain `null`; do not fill them with
 guesses. A model is not automatically inferred from a SKU or title. These raw
 specification labels still need mapping to existing category-specific definitions
-before the later importer can accept them.
+before the importer can accept them. Add an explicit product slug as described in
+the [reviewed-data import guide](product-import.md).
 
 Existing JSON files are protected from accidental replacement. Use a new output
 filename or explicitly pass `--overwrite`; keep reviewed files separate from
