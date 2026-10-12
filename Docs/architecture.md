@@ -1151,6 +1151,8 @@ Draft product writes use staff-only `POST` and `PATCH` endpoints. SKU values are
 
 Changing `regular_price` or `sale_price` creates one `PRODUCT_PRICE_CHANGED` audit event in the same transaction. The event stores the staff actor, product ID, timestamp, and before/after prices as decimal strings. Creating a draft does not count as a price change, and edits that leave both price fields unchanged do not create an event.
 
+Offline preparation of selected Smartlinks products uses `backend/scripts/smartlinks_products.py`: explicit product URLs become versioned review JSON, while a separate `images` command stages main-gallery files through the existing catalog image validator. It uses sequential bounded requests, source-host/path restrictions, and robots checks; no crawler, background worker, new dependency, API, or database write is added. Extracted prices and raw specification labels require manual approval/mapping; category assignment stays unset and prepared records default to unpublished/zero stock. This is preparation only; a management command importing reviewed data through draft/specification/image services is a separate next slice. See [the workflow guide](product-extraction.md).
+
 ---
 
 # 22. Product images
