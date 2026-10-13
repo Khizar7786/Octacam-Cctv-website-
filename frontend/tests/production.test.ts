@@ -22,6 +22,7 @@ let catalogReply: unknown = { count: 0, next: null, previous: null, results: [] 
 let catalogResponder: ((path: string) => unknown) | null = null;
 let brandDetailStatus = 200;
 let brandListStatus = 200;
+let authRequests = 0;
 const detailReplies = new Map<string, { status: number; body: unknown }>();
 const taxonomy = (id: number, name: string, slug: string, is_active = true, logo_url: string | null = null) => ({
   id, name, slug, description: "", is_active, sort_order: id,
@@ -35,6 +36,7 @@ before(async () => {
     throw new Error("Run npm run build before npm run test:production.");
   });
   apiServer = createHttpServer((request, response) => {
+    if (request.url?.startsWith("/api/v1/auth/")) authRequests++;
     const detailMatch = new URL(request.url ?? "/", "http://localhost").pathname.match(/^\/api\/v1\/catalog\/products\/([^/]+)\/$/);
     if (detailMatch) {
       const reply = detailReplies.get(detailMatch[1]) ?? { status: 404, body: { error: { code: "NOT_FOUND", message: "Not found.", fields: {} } } };
@@ -187,6 +189,37 @@ test("production serves SSR documents on direct and refreshed nested requests", 
       assert.match(html, /Build around the equipment you need/);
     }
   }
+  assert.equal(authRequests, 0, "SSR must not restore browser sessions or call cookie-authenticated endpoints");
+});
+
+test("auth pages render private accessible forms and a truthful guest path before hydration", async () => {
+  for (const path of ["/login", "/register"]) {
+    const response = await fetch(`${baseUrl}${path}`);
+    const html = (await response.text()).split("<script")[0];
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+    assert.match(response.headers.get("x-robots-tag") ?? "", /noindex/);
+    assert.match(html, /method="post"/);
+    assert.match(html, /<fieldset[^>]*disabled/);
+    assert.match(html, /for="auth-email"/);
+    assert.match(html, /type="password"/);
+    assert.match(html, /aria-controls="auth-password" aria-pressed="false"/);
+    assert.match(html, /Continue without an account/);
+    assert.match(html, /Guest checkout is being built/);
+    assert.doesNotMatch(html, /name="(?:is_staff|is_superuser|refresh|access)"/);
+    if (path === "/register") {
+      assert.match(html, /for="auth-full_name"/);
+      assert.match(html, /Phone number(?:\s|<!-- -->)*\(optional\)/);
+      assert.match(html, /maxLength="255"/i);
+      assert.match(html, /autoComplete="new-password"/i);
+    } else assert.match(html, /autoComplete="current-password"/i);
+  }
+  const safe = (await (await fetch(`${baseUrl}/login?returnTo=%2Fcart`)).text()).split("<script")[0];
+  assert.match(safe, /href="\/register\?returnTo=%2Fcart"/);
+  const unsafe = (await (await fetch(`${baseUrl}/login?returnTo=https%3A%2F%2Fevil.example`)).text()).split("<script")[0];
+  assert.match(unsafe, /href="\/register"/);
+  assert.doesNotMatch(unsafe, /href="[^"]*evil\.example/);
+  assert.equal(authRequests, 0);
 });
 
 test("shop renders published catalog cards and backend pagination in initial HTML", async () => {

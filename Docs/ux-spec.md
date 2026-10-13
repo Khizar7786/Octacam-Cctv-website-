@@ -256,6 +256,37 @@ definition does not introduce a new endpoint or change booking behaviour.
 6. Narrow-phone, tablet, and desktop layouts have no horizontal overflow; focus
    and announcements work with keyboard use and reduced motion.
 
+### 10.2 Registration and sign-in
+
+Use `/register` for customer registration and `/login` for both customer and
+staff email/password sign-in. Registration collects full name (up to 255
+characters), email, optional phone (up to 30 characters), and password. Django
+validates email uniqueness and password rules; sign-in must not impose new
+registration password rules on an existing account. Never offer a staff-role
+selector during registration.
+
+Label required/optional fields, use password-manager autocomplete, and provide
+a keyboard-accessible Show/Hide password control. While checking the session
+or submitting, announce the pending state and prevent duplicate submission.
+Associate field errors with their inputs and focus a linked error summary after
+a failed submission. Preserve input in component memory on recoverable errors,
+hide the password after failure, and clear it after confirmed success. Do not
+store credentials in URLs or browser storage. An uncertain registration
+response offers sign-in to check the account and must not claim creation succeeded.
+
+Keep account-optional shopping prominent. Until the checkout slice exists,
+the guest continuation link opens the cart and explicitly identifies checkout
+as unfinished. After confirmed sign-in, use a validated internal `returnTo`
+destination if supplied; otherwise show signed-in status and Continue shopping.
+Ignore external/protocol-relative targets, API destinations, and auth-page loops.
+Preserve a valid return destination when switching between these two forms.
+
+Customer and staff success messages reflect the server-returned user. Account
+history and the staff workspace remain separate slices, so neither form links
+to a nonexistent dashboard. Sign out confirms cookie revocation through Django
+and preserves the cart; an uncertain logout offers retry. Frontend messages and
+navigation never replace Django's customer ownership or staff permissions.
+
 ## 11. Staff dashboard UX
 
 Authenticated staff see a simple desktop-first workspace that still functions on a smaller screen. One staff permission level applies. The opening view highlights new orders, orders needing action, and upcoming survey bookings, with direct links to each record; no broad analytics suite.

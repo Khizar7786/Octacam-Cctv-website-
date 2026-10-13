@@ -13,7 +13,6 @@ import { cn } from "~/lib/utils";
 type Panel = "menu" | "search" | null;
 
 const plannedIcons: Partial<Record<string, StoreIconName>> = {
-  "/login": "account",
   "/surveys": "survey",
   "/contact": "contact",
 };
@@ -86,6 +85,16 @@ function CartLink({ compact = false, dark = false, onClick }: { compact?: boolea
       <span className="inline-flex items-center gap-2"><StoreIcon badge={dark || compact} name="cart" /><span className={compact ? "" : "sr-only sm:not-sr-only"}>Cart</span></span>
       {count !== null ? <span aria-hidden="true" className={dark ? "rounded-full bg-card px-2 text-xs text-navigation" : "rounded-full bg-accent px-2 text-xs text-primary"}>{count}</span> : null}
     </Link>
+  );
+}
+
+function AccountLink({ compact = false, dark = false, onClick }: { compact?: boolean; dark?: boolean; onClick?: () => void }) {
+  return (
+    <Link className={cn(
+      "inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold no-underline",
+      compact && "w-full px-3",
+      dark ? "text-navigation-foreground hover:bg-navigation-hover hover:text-navigation-foreground focus-visible:outline-navigation-focus" : "text-foreground hover:bg-accent",
+    )} onClick={onClick} to="/login"><StoreIcon badge={dark || compact} name="account" />Account</Link>
   );
 }
 
@@ -179,7 +188,7 @@ export function SiteHeader() {
             >
               <StoreIcon name="search" /><span aria-hidden="true" className="hidden sm:inline">Search</span>
             </button>
-            <span className="hidden xl:inline-flex"><PlannedLink label="Account" to="/login" /></span>
+            <span className="hidden xl:inline-flex"><AccountLink /></span>
             <CartLink />
             <button
               aria-label="Menu"
@@ -237,10 +246,10 @@ export function SiteHeader() {
             <div className="border-t border-navigation-foreground/30 pt-3">
               {[
                 { label: "Free Lahore site survey", to: "/surveys" },
-                { label: "Account", to: "/login" },
                 { label: "Contact", to: "/contact" },
                 ...policyLinks,
               ].map((link) => <PlannedLink compact dark key={link.to} onClick={() => setOpenPanel(null)} {...link} />)}
+              <AccountLink compact dark onClick={() => setOpenPanel(null)} />
               <CartLink compact dark onClick={() => setOpenPanel(null)} />
             </div>
           </nav>

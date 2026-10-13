@@ -208,7 +208,7 @@ Frontend:
 - pre-rendering for suitable static content
 - REST communication with Django
 
-Exact package versions are pinned in `frontend/package-lock.json`. The frontend foundation includes React Router Framework Mode with `ssr: true`, TypeScript route generation/checking, centralized Tailwind brand tokens, initial customized shadcn/ui source components, a responsive header/footer and mobile menu, placeholder and development-preview routes, a root error boundary, and lint/test/build/start commands. The homepage renders static responsive promotional artwork and live copy from `app/config/promotions.ts`, active brand/category entries, a survey panel, factual reassurance, and up to five records from the public published-product API when available. The first promotion and complete live copy are in SSR HTML; the owner-approved 9 October 2026 wide hero adds native autoplay/typewriter behavior with direct indicators and hover/focus pauses, described below. `/shop`, `/brands`, `/brands/:slug`, and `/categories/:slug` server-render public catalog data through the shared API client. Brand/category pages show scoped product counts and let buyers select the opposite taxonomy; product and taxonomy pagination preserve the route scope. Active taxonomy details with no published products show empty states, while inactive and unknown detail slugs return 404. Shared product cards present the product name, decimal PKR price, and valid sale comparison; separate brand, model/SKU, and stock rows were removed by the owner's 8 October 2026 visual refinement. Product detail pages retain those facts. The shared shell points unfinished destinations to explicit `noindex` development pages and shows every active public brand and featured category links. The root SSR loader follows all validated brand pages, rejects cyclic/invalid pagination, and preserves backend ordering; a brand-fetch failure retains All brands with the existing unavailable state. Verified public contact details are held centrally in `app/config/storefront.ts`; the fields remain unset until the business owner supplies approved values. Public shop, search, brand, and category pages now use URL-backed name/model search, basic brand/category/PKR-price/availability filters, and relevance or price sorting; Django remains authoritative for matches, selling prices, and stock. Category-scoped technical filters now use Django specification metadata for choice, boolean, integer-range, and decimal-range controls, with exact spec_* URL parameters and category-change cleanup. Published product details now render at runtime from Django with images, descriptions, typed specifications, warranty text, current PKR price and stock, and a browser cart handoff; account, booking, and policy content remain later slices. See the [frontend readiness review](frontend-readiness.md) for the dated inventory and contract gaps and [README frontend setup](../Readme.md#run-the-frontend-locally) for current commands.
+Exact package versions are pinned in `frontend/package-lock.json`. The frontend foundation includes React Router Framework Mode with `ssr: true`, TypeScript route generation/checking, centralized Tailwind brand tokens, initial customized shadcn/ui source components, a responsive header/footer and mobile menu, placeholder and development-preview routes, a root error boundary, and lint/test/build/start commands. The homepage renders static responsive promotional artwork and live copy from `app/config/promotions.ts`, active brand/category entries, a survey panel, factual reassurance, and up to five records from the public published-product API when available. The first promotion and complete live copy are in SSR HTML; the owner-approved 9 October 2026 wide hero adds native autoplay/typewriter behavior with direct indicators and hover/focus pauses, described below. `/shop`, `/brands`, `/brands/:slug`, and `/categories/:slug` server-render public catalog data through the shared API client. Brand/category pages show scoped product counts and let buyers select the opposite taxonomy; product and taxonomy pagination preserve the route scope. Active taxonomy details with no published products show empty states, while inactive and unknown detail slugs return 404. Shared product cards present the product name, decimal PKR price, and valid sale comparison; separate brand, model/SKU, and stock rows were removed by the owner's 8 October 2026 visual refinement. Product detail pages retain those facts. The shared shell points unfinished destinations to explicit `noindex` development pages and shows every active public brand and featured category links. The root SSR loader follows all validated brand pages, rejects cyclic/invalid pagination, and preserves backend ordering; a brand-fetch failure retains All brands with the existing unavailable state. Verified public contact details are held centrally in `app/config/storefront.ts`; the fields remain unset until the business owner supplies approved values. Public shop, search, brand, and category pages now use URL-backed name/model search, basic brand/category/PKR-price/availability filters, and relevance or price sorting; Django remains authoritative for matches, selling prices, and stock. Category-scoped technical filters now use Django specification metadata for choice, boolean, integer-range, and decimal-range controls, with exact spec_* URL parameters and category-change cleanup. Published product details now render at runtime from Django with images, descriptions, typed specifications, warranty text, current PKR price and stock, and a browser cart handoff; account history, booking, and policy content remain later slices. See the [frontend readiness review](frontend-readiness.md) for the dated inventory and contract gaps and [README frontend setup](../Readme.md#run-the-frontend-locally) for current commands.
 
 A large global state library is **not** required initially.
 
@@ -489,8 +489,7 @@ when the deployment platform provides internal/private service networking.
 
 Public browser traffic should still use `/api/v1/...`.
 
-The shared public API foundation implements these boundaries without adding
-authenticated-session behavior. Browser modules accept only same-origin
+The shared API foundation implements these boundaries. Browser modules accept only same-origin
 `/api/v1/` paths. Server-only modules prepend the non-`VITE_`
 `OCTACAM_API_ORIGIN` value, which is an HTTP(S) origin, defaults locally to
 `http://127.0.0.1:8000`, and is required in production. Vite proxies `/api/v1`
@@ -501,8 +500,16 @@ The shared transport passes `AbortSignal` through, normalizes the handled API
 error envelope, and gives non-JSON/proxy failures a safe fallback code. Catalog
 response parsing keeps monetary decimals as strings. DRF pagination links are
 normalized from an internal absolute URL to a same-origin `/api/v1/...` path
-before loader data is serialized. Authentication headers, refresh coordination,
-and CSRF behavior remain for the authentication slice.
+before loader data is serialized. The authentication runtime lives in
+`app/features/auth/runtime.ts` and is created separately for each
+`AuthProvider` instance. It keeps the access token and CSRF token only in memory,
+restores the user after hydration through the rotating HttpOnly refresh cookie,
+shares one refresh among simultaneous expired requests, and retries each
+rejected bearer request once. A failed refresh clears the in-memory access
+token; a temporary restoration failure remains a retryable error rather than
+claiming that the user signed out. Logout revokes the cookie and clears only
+authentication state, leaving the browser cart intact. No authentication
+state or token is stored in an SSR process global or sent in loader data.
 
 ---
 
@@ -581,6 +588,22 @@ Django
 ```
 
 ---
+
+The `/login` and `/register` routes share the TypeScript `AuthPage` component
+and call this runtime directly from the browser. Their initial HTML contains
+the form, an account-optional cart entry, and a disabled pending session state;
+credentials are never sent through SSR actions or loader data. Registration
+sends only `full_name`, `email`, optional `phone`, and the untrimmed password.
+Django remains responsible for uniqueness, password validation, and roles.
+Forms retain failed inputs in component memory, focus field-linked error
+summaries, and distinguish uncertain submissions from confirmed success.
+
+Return navigation uses a single validated local `returnTo` parameter, rejecting
+external targets, backslashes/control characters, encoded separators, API paths,
+and auth-page loops. Only a confirmed runtime session triggers that navigation.
+Without a return target, the forms show customer/staff session status and a
+shopping link while account/staff workspace routes remain future work. Auth
+routes remain `noindex`, `no-store`, and use the existing same-origin CSRF flow.
 
 ## 11.4 Session restoration
 
